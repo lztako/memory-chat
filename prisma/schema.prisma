@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  conversations Conversation[]
+  memories      Memory[]
+  createdAt     DateTime       @default(now())
+}
+
+model Conversation {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id])
+  title     String?
+  messages  Message[]
+  context   ConversationContext?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+}
+
+model Memory {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  type       String
+  content    String
+  importance Int      @default(3)
+  layer      String   @default("long_term")
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, importance])
+  @@index([userId, layer, importance])
+}
+
+model ConversationContext {
+  id             String       @id @default(cuid())
+  conversationId String       @unique
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  currentTask    String?
+  quizState      Json?
+  pendingItems   String[]     @default([])
+  updatedAt      DateTime     @updatedAt
+}
