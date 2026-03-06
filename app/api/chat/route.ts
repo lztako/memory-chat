@@ -147,7 +147,7 @@ export async function POST(req: Request) {
 
         const allMemories = [...longTerm, ...dailyLog]
         const conversationText = [
-          ...dbMessages.map((m) => ({ role: m.role, content: m.content })),
+          ...dbMessages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
           { role: "user", content: message },
           { role: "assistant", content: fullResponse },
         ]
