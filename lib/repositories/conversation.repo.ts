@@ -31,4 +31,12 @@ export const conversationRepo = {
   async updateTitle(id: string, title: string) {
     return prisma.conversation.update({ where: { id }, data: { title } })
   },
+
+  async delete(id: string) {
+    await prisma.$transaction([
+      prisma.message.deleteMany({ where: { conversationId: id } }),
+      prisma.conversationContext.deleteMany({ where: { conversationId: id } }),
+      prisma.conversation.delete({ where: { id } }),
+    ])
+  },
 }

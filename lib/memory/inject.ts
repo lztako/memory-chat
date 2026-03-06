@@ -11,7 +11,16 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[]): strin
       ? `\n\n## บันทึกล่าสุดวันนี้:\n${dailyLog.map((m) => `- ${m.content}`).join("\n")}`
       : ""
 
+  const today = new Date().toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  })
+
   return `You are a personal AI assistant.
+วันนี้คือ ${today}
+
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
 ${longTermText}${dailySection}

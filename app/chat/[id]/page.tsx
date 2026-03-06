@@ -12,6 +12,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [conversationId, setConversationId] = useState<string>("")
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -21,10 +22,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
   useEffect(() => {
     if (!conversationId) return
+    setIsLoadingMessages(true)
     fetch(`/api/conversations/${conversationId}/messages`)
       .then((res) => res.json())
       .then((data: Message[]) => setMessages(data))
       .catch(console.error)
+      .finally(() => setIsLoadingMessages(false))
   }, [conversationId])
 
   useEffect(() => {
@@ -51,6 +54,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         signal: controller.signal,
       })
 
+      if (!res.ok) {
+        throw new Error(`เกิดข้อผิดพลาด (${res.status})`)
+      }
+
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
 
@@ -70,6 +77,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         console.error(err)
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: "⚠️ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
+          }
+          return updated
+        })
       }
     } finally {
       setIsStreaming(false)
@@ -84,14 +99,15 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         <p className="text-xs text-gray-400">จำคุณได้ข้ามการสนทนา</p>
       </header>
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        {messages.length === 0 && (
-          <p className="text-center text-gray-400 mt-16 text-sm">
-            เริ่มการสนทนา...
-          </p>
+        {isLoadingMessages ? (
+          <p className="text-center text-gray-400 mt-16 text-sm">กำลังโหลด...</p>
+        ) : messages.length === 0 ? (
+          <p className="text-center text-gray-400 mt-16 text-sm">เริ่มการสนทนา...</p>
+        ) : (
+          messages.map((m, i) => (
+            <MessageBubble key={i} role={m.role} content={m.content} />
+          ))
         )}
-        {messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} content={m.content} />
-        ))}
         <div ref={bottomRef} />
       </div>
       <ChatInput

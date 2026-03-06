@@ -4,12 +4,24 @@ import { memoryRepo } from "@/lib/repositories/memory.repo"
 import { conversationRepo } from "@/lib/repositories/conversation.repo"
 import { buildSystemPrompt } from "@/lib/memory/inject"
 import { extractAndSaveMemories } from "@/lib/memory/extract"
+import { generateAndSaveTitle } from "@/lib/memory/title"
 import { toolDefinitions } from "@/lib/tools/definitions"
 import { executeToolCall } from "@/lib/tools/handlers"
-
-const USER_ID = "test-user-001"
+import { createClient } from "@/lib/supabase/server"
+import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
+  const USER_ID = user.id
+  await prisma.user.upsert({
+    where: { id: USER_ID },
+    update: {},
+    create: { id: USER_ID, email: user.email ?? '', name: user.email ?? '' },
+  })
+
   const { message, conversationId } = await req.json()
 
   const [{ longTerm, dailyLog }, dbMessages] = await Promise.all([
@@ -145,6 +157,10 @@ export async function POST(req: Request) {
         extractAndSaveMemories(USER_ID, conversationText, allMemories).catch(
           console.error
         )
+
+        if (dbMessages.length === 0) {
+          generateAndSaveTitle(conversationId, message).catch(console.error)
+        }
       }
     },
   })

@@ -2,10 +2,62 @@ import { anthropic } from "../claude"
 import { memoryRepo } from "../repositories/memory.repo"
 import { Memory } from "@prisma/client"
 
+interface NewMemory {
+  type: string
+  content: string
+  importance: number
+  layer: string
+}
+
 interface ExtractResult {
-  new_memories: { type: string; content: string; importance: number; layer: string }[]
+  new_memories: NewMemory[]
   update_memories: { id: string; content: string }[]
   delete_memory_ids: string[]
+}
+
+async function evaluateLayers(memories: NewMemory[]): Promise<NewMemory[]> {
+  if (memories.length === 0) return memories
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 256,
+    messages: [
+      {
+        role: "user",
+        content: `ตรวจสอบ layer ของ memories เหล่านี้ว่าถูกต้องไหม:
+${memories.map((m, i) => `[${i}] (${m.layer}) ${m.content}`).join("\n")}
+
+กฎ:
+- long_term: ข้อมูลถาวร (ชื่อ งาน ครอบครัว เป้าหมาย ความชอบระยะยาว)
+- daily_log: สิ่งชั่วคราว (อารมณ์วันนี้ task ปัจจุบัน แผนวันนี้)
+
+ตอบเป็น JSON เท่านั้น — array ที่มีสมาชิกเท่ากับ input:
+[{ "index": 0, "layer": "long_term|daily_log", "changed": true|false }]`,
+      },
+    ],
+  })
+
+  try {
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "[]"
+    const corrections: { index: number; layer: string; changed: boolean }[] =
+      JSON.parse(text)
+
+    const corrected = [...memories]
+    for (const c of corrections) {
+      if (c.changed && corrected[c.index]) {
+        const prev = corrected[c.index].layer
+        corrected[c.index] = { ...corrected[c.index], layer: c.layer }
+        console.log(
+          `[memory eval] corrected [${c.index}] ${prev} → ${c.layer}: ${corrected[c.index].content.slice(0, 40)}`
+        )
+      }
+    }
+    return corrected
+  } catch {
+    console.error("[memory eval] failed to parse evaluator response — using original")
+    return memories
+  }
 }
 
 export async function extractAndSaveMemories(
@@ -67,7 +119,9 @@ ${existingText}
       response.content[0].type === "text" ? response.content[0].text : ""
     const result: ExtractResult = JSON.parse(text)
 
-    for (const m of result.new_memories) {
+    const validatedMemories = await evaluateLayers(result.new_memories)
+
+    for (const m of validatedMemories) {
       await memoryRepo.create({ userId, ...m })
     }
 

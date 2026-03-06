@@ -53,4 +53,12 @@ export const memoryRepo = {
   async getAll(userId: string) {
     return prisma.memory.findMany({ where: { userId } })
   },
+
+  async clearOldDailyLog(userId: string) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return prisma.memory.deleteMany({
+      where: { userId, layer: "daily_log", createdAt: { lt: today } },
+    })
+  },
 }
