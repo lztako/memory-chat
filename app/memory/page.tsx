@@ -4,6 +4,14 @@ import { createClient } from "@/lib/supabase/server"
 import { memoryRepo } from "@/lib/repositories/memory.repo"
 import { SubmitButton } from "@/components/SubmitButton"
 
+type Memory = {
+  id: string
+  layer: string
+  type: string
+  content: string
+  importance: number
+}
+
 const layerLabel: Record<string, string> = {
   long_term: "ระยะยาว",
   daily_log: "วันนี้",
@@ -21,9 +29,9 @@ export default async function MemoryPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const memories = await memoryRepo.getAll(user.id)
-  const longTerm = memories.filter((m) => m.layer === "long_term")
-  const dailyLog = memories.filter((m) => m.layer === "daily_log")
+  const memories: Memory[] = await memoryRepo.getAll(user.id)
+  const longTerm = memories.filter((m: Memory) => m.layer === "long_term")
+  const dailyLog = memories.filter((m: Memory) => m.layer === "daily_log")
 
   async function deleteMemory(id: string) {
     "use server"
@@ -83,7 +91,7 @@ export default async function MemoryPage() {
             </p>
           ) : (
             <div className="space-y-2">
-              {longTerm.map((m) => (
+              {longTerm.map((m: Memory) => (
                 <MemoryItem key={m.id} id={m.id} content={m.content} type={m.type} importance={m.importance} />
               ))}
             </div>
@@ -100,7 +108,7 @@ export default async function MemoryPage() {
             </p>
           ) : (
             <div className="space-y-2">
-              {dailyLog.map((m) => (
+              {dailyLog.map((m: Memory) => (
                 <MemoryItem key={m.id} id={m.id} content={m.content} type={m.type} importance={m.importance} />
               ))}
             </div>
