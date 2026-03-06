@@ -6,5 +6,5 @@ export async function GET(
 ) {
   const { id } = await params
   const messages = await conversationRepo.getMessages(id, 50)
-  return Response.json(messages.map((m) => ({ role: m.role, content: m.content })))
+  return Response.json(messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })))
 }

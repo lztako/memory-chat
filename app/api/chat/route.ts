@@ -151,7 +151,7 @@ export async function POST(req: Request) {
           { role: "user", content: message },
           { role: "assistant", content: fullResponse },
         ]
-          .map((m) => `${m.role}: ${m.content}`)
+          .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
           .join("\n")
 
         extractAndSaveMemories(USER_ID, conversationText, allMemories).catch(
