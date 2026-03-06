@@ -1,6 +1,6 @@
 import { anthropic } from "../claude"
 import { memoryRepo } from "../repositories/memory.repo"
-import { Memory } from "@prisma/client"
+import type { Memory } from "../types"
 
 interface NewMemory {
   type: string

@@ -1,4 +1,4 @@
-import { Memory } from "@prisma/client"
+import type { Memory } from "../types"
 
 export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[]): string {
   const longTermText =
