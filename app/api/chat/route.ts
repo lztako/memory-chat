@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const systemPrompt = buildSystemPrompt(longTerm, dailyLog)
 
   const apiMessages: Anthropic.MessageParam[] = [
-    ...dbMessages.map((m) => ({
+    ...dbMessages.map((m: { role: string; content: string }) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     })),
