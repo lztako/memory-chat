@@ -3,12 +3,12 @@ import { Memory } from "@prisma/client"
 export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[]): string {
   const longTermText =
     longTerm.length > 0
-      ? longTerm.map((m) => `- ${m.content}`).join("\n")
+      ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
       : "ยังไม่มีข้อมูลเกี่ยวกับ user คนนี้"
 
   const dailySection =
     dailyLog.length > 0
-      ? `\n\n## บันทึกล่าสุดวันนี้:\n${dailyLog.map((m) => `- ${m.content}`).join("\n")}`
+      ? `\n\n## บันทึกล่าสุดวันนี้:\n${dailyLog.map((m: { content: string }) => `- ${m.content}`).join("\n")}`
       : ""
 
   const today = new Date().toLocaleDateString("th-TH", {

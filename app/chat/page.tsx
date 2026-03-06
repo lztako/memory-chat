@@ -5,6 +5,7 @@ import { conversationRepo } from "@/lib/repositories/conversation.repo"
 import { createClient } from "@/lib/supabase/server"
 import { memoryRepo } from "@/lib/repositories/memory.repo"
 import { SubmitButton } from "@/components/SubmitButton"
+import type { Conversation } from "@prisma/client"
 
 export default async function ChatListPage() {
   const supabase = await createClient()
@@ -83,7 +84,7 @@ export default async function ChatListPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {conversations.map((conv) => {
+          {conversations.map((conv: Conversation) => {
             const deleteWithId = deleteConversation.bind(null, conv.id)
             return (
               <div key={conv.id} className="flex items-center border rounded-xl hover:bg-gray-50 transition-colors">

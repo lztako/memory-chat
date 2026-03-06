@@ -72,7 +72,7 @@ export async function extractAndSaveMemories(
   const existingText =
     existingMemories.length > 0
       ? existingMemories
-          .map((m) => `[${m.id}] (${m.type}|${m.layer}) ${m.content}`)
+          .map((m: { id: string; type: string; layer: string; content: string }) => `[${m.id}] (${m.type}|${m.layer}) ${m.content}`)
           .join("\n")
       : "ไม่มี"
 
