@@ -10,6 +10,19 @@ type UserSkill = {
   solution: string
 }
 
+const MAX_INJECTED_SKILLS = 5
+
+function filterRelevantSkills(skills: UserSkill[], message: string): UserSkill[] {
+  if (skills.length === 0) return []
+  const msgLower = message.toLowerCase()
+  return skills
+    .filter((skill) => {
+      const triggerTokens = skill.trigger.toLowerCase().split(/\s+/).filter((t) => t.length >= 2)
+      return triggerTokens.some((token) => msgLower.includes(token))
+    })
+    .slice(0, MAX_INJECTED_SKILLS)
+}
+
 function buildSkillsSection(skills: UserSkill[]): string {
   if (skills.length === 0) return ""
   return `\n\n## Skills ที่เรียนรู้จาก user นี้:\n${skills.map((s) => `- [${s.name}] เมื่อ: ${s.trigger} → ${s.solution}`).join("\n")}`
@@ -58,7 +71,7 @@ function buildReminderSection(tasks: ReminderTask[]): string {
   return lines.join("\n")
 }
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = []): string {
+export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = [], message = ""): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -78,7 +91,8 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
 
   const reminderSection = buildReminderSection(reminderTasks)
   const userConfigSection = buildUserConfigSection(userConfig)
-  const skillsSection = buildSkillsSection(skills)
+  const relevantSkills = filterRelevantSkills(skills, message)
+  const skillsSection = buildSkillsSection(relevantSkills)
 
   return `You are a personal AI assistant for import/export professionals.
 วันนี้คือ ${today}

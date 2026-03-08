@@ -7,7 +7,19 @@ export const skillRepo = {
     trigger: string
     solution: string
   }) {
-    return prisma.userSkill.create({ data })
+    const skill = await prisma.userSkill.create({ data })
+    // LRU eviction: keep max 30 skills per user (drop least used)
+    const count = await prisma.userSkill.count({ where: { userId: data.userId } })
+    if (count > 30) {
+      const oldest = await prisma.userSkill.findFirst({
+        where: { userId: data.userId },
+        orderBy: [{ usageCount: "asc" }, { createdAt: "asc" }],
+      })
+      if (oldest && oldest.id !== skill.id) {
+        await prisma.userSkill.delete({ where: { id: oldest.id } })
+      }
+    }
+    return skill
   },
 
   async listByUser(userId: string) {
