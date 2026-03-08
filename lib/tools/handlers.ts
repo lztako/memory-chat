@@ -2,6 +2,7 @@ import { memoryRepo } from "@/lib/repositories/memory.repo"
 import { contextRepo } from "@/lib/repositories/context.repo"
 import { fileRepo } from "@/lib/repositories/file.repo"
 import { taskRepo } from "@/lib/repositories/task.repo"
+import { skillRepo } from "@/lib/repositories/skill.repo"
 import { queryTrade, listTradeCompanies, rankTradeCompanies } from "@/lib/tendata/client"
 import { checkTendataLimit, recordTendataUsage } from "@/lib/tendata/rate-limit"
 import { Prisma } from "@prisma/client"
@@ -266,6 +267,30 @@ export async function executeToolCall(
         return result
       } catch (err) {
         return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
+      }
+    }
+
+    case "save_skill": {
+      const name = toolInput.name as string
+      const existing = await skillRepo.findByName(userId, name)
+      if (existing) {
+        return { success: true, message: `Skill "${name}" มีอยู่แล้ว ไม่ได้บันทึกซ้ำ`, id: existing.id }
+      }
+      const skill = await skillRepo.create({
+        userId,
+        name,
+        trigger: toolInput.trigger as string,
+        solution: toolInput.solution as string,
+      })
+      return { success: true, id: skill.id, message: `บันทึก skill "${name}" แล้ว` }
+    }
+
+    case "render_artifact": {
+      return {
+        __isArtifact: true,
+        type: toolInput.type as string,
+        title: toolInput.title as string,
+        data: toolInput.data as Record<string, unknown>,
       }
     }
 

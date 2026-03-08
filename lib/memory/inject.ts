@@ -4,6 +4,17 @@ type UserConfig = {
   content: string
 }
 
+type UserSkill = {
+  name: string
+  trigger: string
+  solution: string
+}
+
+function buildSkillsSection(skills: UserSkill[]): string {
+  if (skills.length === 0) return ""
+  return `\n\n## Skills ที่เรียนรู้จาก user นี้:\n${skills.map((s) => `- [${s.name}] เมื่อ: ${s.trigger} → ${s.solution}`).join("\n")}`
+}
+
 function buildUserConfigSection(configs: UserConfig[]): string {
   if (configs.length === 0) return ""
   return `\n\n## วิธีทำงานกับ user คนนี้ (AI Config):\n${configs.map((c) => `- ${c.content}`).join("\n")}`
@@ -47,7 +58,7 @@ function buildReminderSection(tasks: ReminderTask[]): string {
   return lines.join("\n")
 }
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = []): string {
+export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = []): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -67,13 +78,14 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
 
   const reminderSection = buildReminderSection(reminderTasks)
   const userConfigSection = buildUserConfigSection(userConfig)
+  const skillsSection = buildSkillsSection(skills)
 
   return `You are a personal AI assistant for import/export professionals.
 วันนี้คือ ${today}
 
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
-${longTermText}${dailySection}${userConfigSection}${reminderSection}
+${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSection}
 
 ## Rules:
 - ตอบเป็นภาษาไทยถ้า user พูดภาษาไทย
@@ -84,5 +96,6 @@ ${longTermText}${dailySection}${userConfigSection}${reminderSection}
 ## การใช้ Tools:
 - ใช้ get_context_state เมื่อ user ส่งคำตอบสั้นๆ ไม่ชัดว่ากำลังทำอะไร
 - ใช้ update_context_state ทันทีหลังเริ่ม quiz หรือ task ใหม่
-- ใช้ save_memory เมื่อ user บอกข้อมูลสำคัญโดยตรง`
+- ใช้ save_memory เมื่อ user บอกข้อมูลสำคัญโดยตรง
+- ใช้ save_skill ทันทีหลังแก้ปัญหาที่ไม่ชัดเจน (column แปลก, format พิเศษ, logic เฉพาะของ user) เพื่อให้จำได้ครั้งต่อไป`
 }

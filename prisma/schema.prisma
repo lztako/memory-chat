@@ -12,7 +12,42 @@ model User {
   name          String?
   conversations Conversation[]
   memories      Memory[]
+  files         UserFile[]
+  tasks         Task[]
+  skills        UserSkill[]
   createdAt     DateTime       @default(now())
+}
+
+model UserSkill {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  trigger     String
+  solution    String
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model UserFile {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  fileName    String
+  fileType    String   @default("other")
+  description String?
+  mimeType    String
+  size        Int
+  rowCount    Int      @default(0)
+  columns     String[]
+  data        Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, fileType])
 }
 
 model Conversation {
@@ -49,6 +84,23 @@ model Memory {
 
   @@index([userId, importance])
   @@index([userId, layer, importance])
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  title         String
+  description   String?
+  status        String    @default("pending")
+  priority      String    @default("normal")
+  dueDate       DateTime?
+  linkedCompany String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
 }
 
 model ConversationContext {

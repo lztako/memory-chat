@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { recordTokenUsage } from "@/lib/ai/token-usage"
 import { taskRepo } from "@/lib/repositories/task.repo"
+import { skillRepo } from "@/lib/repositories/skill.repo"
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -26,10 +27,11 @@ export async function POST(req: Request) {
 
   const { message, conversationId } = await req.json()
 
-  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks] = await Promise.all([
+  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks, skills] = await Promise.all([
     memoryRepo.getForInjection(USER_ID),
     conversationRepo.getMessages(conversationId),
     taskRepo.getReminders(USER_ID),
+    skillRepo.listByUser(USER_ID),
   ])
 
   await conversationRepo.addMessage({
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
     content: message,
   })
 
-  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks, userConfig)
+  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks, userConfig, skills)
 
   const apiMessages: Anthropic.MessageParam[] = [
     ...dbMessages.map((m: { role: string; content: string }) => ({
@@ -53,6 +55,8 @@ export async function POST(req: Request) {
   const readable = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
+      const sse = (type: string, value: unknown) =>
+        encoder.encode(`data: ${JSON.stringify({ t: type, v: value })}\n\n`)
 
       try {
         while (true) {
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
             } else if (event.type === "content_block_delta") {
               if (event.delta.type === "text_delta") {
                 fullResponse += event.delta.text
-                controller.enqueue(encoder.encode(event.delta.text))
+                controller.enqueue(sse("text", event.delta.text))
               } else if (
                 event.delta.type === "input_json_delta" &&
                 currentBlock
@@ -122,11 +126,22 @@ export async function POST(req: Request) {
                 conversationId,
                 USER_ID
               )
-              toolResults.push({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: JSON.stringify(result),
-              })
+              const r = result as Record<string, unknown>
+              if (r.__isArtifact) {
+                const { __isArtifact: _, ...artifactData } = r
+                controller.enqueue(sse("artifact", artifactData))
+                toolResults.push({
+                  type: "tool_result",
+                  tool_use_id: block.id,
+                  content: JSON.stringify({ success: true, message: "Artifact rendered in panel" }),
+                })
+              } else {
+                toolResults.push({
+                  type: "tool_result",
+                  tool_use_id: block.id,
+                  content: JSON.stringify(result),
+                })
+              }
             }
 
             apiMessages.push({ role: "user", content: toolResults })
@@ -171,6 +186,6 @@ export async function POST(req: Request) {
   })
 
   return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+    headers: { "Content-Type": "text/event-stream; charset=utf-8" },
   })
 }

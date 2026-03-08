@@ -339,4 +339,49 @@ export const toolDefinitions: Anthropic.Tool[] = [
       required: ["catalog"],
     },
   },
+  {
+    name: "save_skill",
+    description:
+      "บันทึก solution ที่แก้ปัญหาไม่ชัดเจนเป็น skill ถาวร — เรียกเมื่อแก้ปัญหาที่อาจเกิดซ้ำ เช่น column ชื่อแปลก, date format พิเศษ, การคำนวณเฉพาะของ user ครั้งต่อไปที่เจอ pattern เดิมจะใช้ skill นี้ได้เลย",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "ชื่อ skill กระชับ เช่น 'Date BE Format', 'Custom Column: วันที่ส่งของ'",
+        },
+        trigger: {
+          type: "string",
+          description: "เมื่อไหรให้ใช้ skill นี้ เช่น 'เจอ date column ในรูป DD/MM/YYYY พ.ศ.', 'ไฟล์ shipment มี column ชื่อ วันที่ส่งของ'",
+        },
+        solution: {
+          type: "string",
+          description: "วิธีแก้ปัญหาที่ใช้ได้จริง เขียนให้ชัดพอที่จะนำไปใช้ซ้ำได้เลย",
+        },
+      },
+      required: ["name", "trigger", "solution"],
+    },
+  },
+  {
+    name: "render_artifact",
+    description:
+      "แสดงผลข้อมูลใน Artifact Panel ด้านข้าง — เรียกทันทีหลังได้รับ trade data หรือต้องการแสดง visualization: rank_trade_companies → chart_bar, list/query_trade_data → table, summary/analysis → markdown",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: {
+          type: "string",
+          enum: ["chart_bar", "table", "markdown"],
+          description: "chart_bar = bar chart เปรียบเทียบ | table = ตารางข้อมูล | markdown = text/summary",
+        },
+        title: { type: "string", description: "หัวข้อ artifact เช่น 'Top 10 Importers — Cotton Fabric (HS 5208)'" },
+        data: {
+          type: "object",
+          description:
+            "chart_bar: {items:[{label:string,value:number}], unit:string} | table: {columns:string[], rows:(string|number)[][]} | markdown: {content:string}",
+        },
+      },
+      required: ["type", "title", "data"],
+    },
+  },
 ]
