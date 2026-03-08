@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
   const { message, conversationId } = await req.json()
 
-  const [{ longTerm, dailyLog }, dbMessages, reminderTasks] = await Promise.all([
+  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks] = await Promise.all([
     memoryRepo.getForInjection(USER_ID),
     conversationRepo.getMessages(conversationId),
     taskRepo.getReminders(USER_ID),
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     content: message,
   })
 
-  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks)
+  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks, userConfig)
 
   const apiMessages: Anthropic.MessageParam[] = [
     ...dbMessages.map((m: { role: string; content: string }) => ({

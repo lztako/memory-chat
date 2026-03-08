@@ -13,9 +13,9 @@ export const memoryRepo = {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const [longTerm, dailyLog] = await Promise.all([
+    const [longTerm, dailyLog, userConfig] = await Promise.all([
       prisma.memory.findMany({
-        where: { userId, layer: "long_term" },
+        where: { userId, layer: "long_term", type: { not: "user_config" } },
         orderBy: { importance: "desc" },
         take: 20,
       }),
@@ -24,9 +24,13 @@ export const memoryRepo = {
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
+      prisma.memory.findMany({
+        where: { userId, type: "user_config" },
+        orderBy: { importance: "desc" },
+      }),
     ])
 
-    return { longTerm, dailyLog }
+    return { longTerm, dailyLog, userConfig }
   },
 
   async create(data: {

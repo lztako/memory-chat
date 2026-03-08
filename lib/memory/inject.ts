@@ -1,5 +1,14 @@
 import type { Memory } from "../types"
 
+type UserConfig = {
+  content: string
+}
+
+function buildUserConfigSection(configs: UserConfig[]): string {
+  if (configs.length === 0) return ""
+  return `\n\n## วิธีทำงานกับ user คนนี้ (AI Config):\n${configs.map((c) => `- ${c.content}`).join("\n")}`
+}
+
 type ReminderTask = {
   title: string
   dueDate: Date | null
@@ -38,7 +47,7 @@ function buildReminderSection(tasks: ReminderTask[]): string {
   return lines.join("\n")
 }
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = []): string {
+export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = []): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -57,13 +66,14 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
   })
 
   const reminderSection = buildReminderSection(reminderTasks)
+  const userConfigSection = buildUserConfigSection(userConfig)
 
-  return `You are a personal AI assistant.
+  return `You are a personal AI assistant for import/export professionals.
 วันนี้คือ ${today}
 
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
-${longTermText}${dailySection}${reminderSection}
+${longTermText}${dailySection}${userConfigSection}${reminderSection}
 
 ## Rules:
 - ตอบเป็นภาษาไทยถ้า user พูดภาษาไทย
