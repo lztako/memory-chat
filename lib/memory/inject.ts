@@ -1,6 +1,44 @@
 import type { Memory } from "../types"
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[]): string {
+type ReminderTask = {
+  title: string
+  dueDate: Date | null
+  priority: string
+  linkedCompany: string | null
+}
+
+function buildReminderSection(tasks: ReminderTask[]): string {
+  if (tasks.length === 0) return ""
+
+  const now = new Date()
+  const overdue = tasks.filter((t) => t.dueDate && t.dueDate < now)
+  const upcoming = tasks.filter((t) => t.dueDate && t.dueDate >= now)
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })
+
+  const lines: string[] = ["\n\n## Task ที่ต้องแจ้งเตือน:"]
+
+  if (overdue.length > 0) {
+    lines.push("**เลยกำหนดแล้ว:**")
+    overdue.forEach((t) => {
+      const company = t.linkedCompany ? ` — ${t.linkedCompany}` : ""
+      lines.push(`- ${t.title} (ครบ ${fmt(t.dueDate!)})${company}`)
+    })
+  }
+
+  if (upcoming.length > 0) {
+    lines.push("**กำหนดภายใน 24 ชั่วโมง:**")
+    upcoming.forEach((t) => {
+      const company = t.linkedCompany ? ` — ${t.linkedCompany}` : ""
+      lines.push(`- ${t.title} (ครบ ${fmt(t.dueDate!)})${company}`)
+    })
+  }
+
+  return lines.join("\n")
+}
+
+export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = []): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -18,12 +56,14 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[]): strin
     weekday: "long",
   })
 
+  const reminderSection = buildReminderSection(reminderTasks)
+
   return `You are a personal AI assistant.
 วันนี้คือ ${today}
 
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
-${longTermText}${dailySection}
+${longTermText}${dailySection}${reminderSection}
 
 ## Rules:
 - ตอบเป็นภาษาไทยถ้า user พูดภาษาไทย

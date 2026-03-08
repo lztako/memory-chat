@@ -9,6 +9,8 @@ import { toolDefinitions } from "@/lib/tools/definitions"
 import { executeToolCall } from "@/lib/tools/handlers"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
+import { recordTokenUsage } from "@/lib/ai/token-usage"
+import { taskRepo } from "@/lib/repositories/task.repo"
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -24,9 +26,10 @@ export async function POST(req: Request) {
 
   const { message, conversationId } = await req.json()
 
-  const [{ longTerm, dailyLog }, dbMessages] = await Promise.all([
+  const [{ longTerm, dailyLog }, dbMessages, reminderTasks] = await Promise.all([
     memoryRepo.getForInjection(USER_ID),
     conversationRepo.getMessages(conversationId),
+    taskRepo.getReminders(USER_ID),
   ])
 
   await conversationRepo.addMessage({
@@ -35,7 +38,7 @@ export async function POST(req: Request) {
     content: message,
   })
 
-  const systemPrompt = buildSystemPrompt(longTerm, dailyLog)
+  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks)
 
   const apiMessages: Anthropic.MessageParam[] = [
     ...dbMessages.map((m: { role: string; content: string }) => ({
@@ -105,6 +108,7 @@ export async function POST(req: Request) {
           if (req.signal.aborted) break
 
           const finalMsg = await stream.finalMessage()
+          recordTokenUsage(USER_ID, finalMsg.usage.input_tokens, finalMsg.usage.output_tokens)
 
           if (finalMsg.stop_reason === "tool_use") {
             apiMessages.push({ role: "assistant", content: finalMsg.content })
@@ -115,7 +119,8 @@ export async function POST(req: Request) {
               const result = await executeToolCall(
                 block.name,
                 input,
-                conversationId
+                conversationId,
+                USER_ID
               )
               toolResults.push({
                 type: "tool_result",
