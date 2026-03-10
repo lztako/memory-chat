@@ -6,11 +6,6 @@ import {
 } from "recharts"
 import type { ComputedWidget, ComputedKPI, ComputedBarChart, ComputedDonut, ComputedTable } from "@/app/chat/dashboard/page"
 
-// layout field อยู่ใน widget config JSON
-// "layout": "full"  → gridColumn: "1 / -1" (เต็มแถว)
-// "layout": "half"  → ครึ่งแถว (default)
-// ไม่ระบุ           → half
-type WidgetWithLayout = ComputedWidget & { layout?: "full" | "half" }
 
 // ── Palette ────────────────────────────────────────────────────────
 const PALETTE = ["#2a2825", "#8b7355", "#c4a882", "#e8d5b7", "#6b8e7f", "#a0856b"]
@@ -303,10 +298,9 @@ function EmptyDashboard() {
 
 // ── Main Component ─────────────────────────────────────────────────
 export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
-  const all = widgets as WidgetWithLayout[]
-  const kpis = all.filter((w): w is ComputedKPI & { layout?: "full" | "half" } => w.type === "kpi")
-  const charts = all.filter((w) => w.type === "bar_chart" || w.type === "donut_chart")
-  const tables = all.filter((w): w is ComputedTable & { layout?: "full" | "half" } => w.type === "table")
+  const kpis = widgets.filter((w): w is ComputedKPI => w.type === "kpi")
+  const charts = widgets.filter((w) => w.type === "bar_chart" || w.type === "donut_chart")
+  const tables = widgets.filter((w): w is ComputedTable => w.type === "table")
 
   if (widgets.length === 0) {
     return (
@@ -380,7 +374,7 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
             marginBottom: 12,
           }}>
             {charts.map((w) => {
-              const isFull = (w as WidgetWithLayout).layout === "full"
+              const isFull = (w as ComputedWidget).layout === "full"
               return (
                 <div key={w.id} style={isFull ? { gridColumn: "1 / -1" } : {}}>
                   {w.type === "bar_chart" && <BarChartWidget widget={w as ComputedBarChart} />}

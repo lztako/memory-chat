@@ -8,6 +8,7 @@ type WidgetConfig = {
   id: string
   type: "kpi" | "bar_chart" | "donut_chart" | "table"
   title: string
+  layout?: "full" | "half"
   fileId?: string
   config: {
     column?: string
@@ -28,20 +29,20 @@ type WidgetConfig = {
 
 // ── Computed widget types (passed to client) ───────────────────────
 export type ComputedKPI = {
-  id: string; type: "kpi"; title: string
+  id: string; type: "kpi"; title: string; layout?: "full" | "half"
   value: number; format: string
 }
 export type ComputedBarChart = {
-  id: string; type: "bar_chart"; title: string
+  id: string; type: "bar_chart"; title: string; layout?: "full" | "half"
   data: { label: string; value: number }[]
   valueFormat?: string
 }
 export type ComputedDonut = {
-  id: string; type: "donut_chart"; title: string
+  id: string; type: "donut_chart"; title: string; layout?: "full" | "half"
   data: { name: string; value: number }[]
 }
 export type ComputedTable = {
-  id: string; type: "table"; title: string
+  id: string; type: "table"; title: string; layout?: "full" | "half"
   columns: string[]; rows: Record<string, string>[]
 }
 export type ComputedWidget = ComputedKPI | ComputedBarChart | ComputedDonut | ComputedTable
@@ -109,7 +110,7 @@ async function computeWidget(
     } else if (config.aggregate === "filter_count" && config.column && config.filterValue) {
       value = data.filter(r => r[config.column!] === config.filterValue).length
     }
-    return { id: widget.id, type: "kpi", title: widget.title, value, format: config.format ?? "number" }
+    return { id: widget.id, type: "kpi", title: widget.title, layout: widget.layout, value, format: config.format ?? "number" }
   }
 
   if (widget.type === "bar_chart") {
@@ -117,7 +118,7 @@ async function computeWidget(
     if (config.xFormat === "month" && config.xAxis && config.yAxis) {
       chartData = groupByMonth(data, config.xAxis, config.yAxis)
     }
-    return { id: widget.id, type: "bar_chart", title: widget.title, data: chartData, valueFormat: config.format }
+    return { id: widget.id, type: "bar_chart", title: widget.title, layout: widget.layout, data: chartData, valueFormat: config.format }
   }
 
   if (widget.type === "donut_chart") {
@@ -125,7 +126,7 @@ async function computeWidget(
     if (config.groupBy && config.valueColumn) {
       chartData = groupByCol(data, config.groupBy, config.valueColumn).slice(0, 8)
     }
-    return { id: widget.id, type: "donut_chart", title: widget.title, data: chartData }
+    return { id: widget.id, type: "donut_chart", title: widget.title, layout: widget.layout, data: chartData }
   }
 
   if (widget.type === "table") {
@@ -139,7 +140,7 @@ async function computeWidget(
       })
     }
     if (config.limit) rows = rows.slice(0, config.limit)
-    return { id: widget.id, type: "table", title: widget.title, columns: config.columns ?? [], rows }
+    return { id: widget.id, type: "table", title: widget.title, layout: widget.layout, columns: config.columns ?? [], rows }
   }
 
   return null
