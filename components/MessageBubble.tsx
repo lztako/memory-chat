@@ -1,4 +1,5 @@
 "use client"
+import { useEffect, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
@@ -22,10 +23,46 @@ const TOOL_LABELS: Record<string, string> = {
   list_tasks: "Loading tasks",
   query_files: "Reading files",
   save_user_config: "Saving config",
+  rename_user_file: "Renaming file",
+  update_user_config: "Updating config",
+}
+
+const TOOL_STATUS: Record<string, string> = {
+  list_trade_companies: "Searching trade companies...",
+  rank_trade_companies: "Ranking by trade volume...",
+  query_trade_data: "Querying trade database...",
+  render_artifact: "Building visualization...",
+  save_skill: "Saving new skill...",
+  create_task: "Creating task...",
+  update_task: "Updating task...",
+  list_tasks: "Loading tasks...",
+  query_files: "Reading your files...",
+  save_user_config: "Saving configuration...",
+  rename_user_file: "Renaming file...",
+  update_user_config: "Updating configuration...",
+}
+
+function useElapsedTime(active: boolean) {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!active) { setElapsed(0); return }
+    const start = Date.now()
+    const timer = setInterval(() => setElapsed(Math.round((Date.now() - start) / 100) / 10), 100)
+    return () => clearInterval(timer)
+  }, [active])
+  return elapsed
 }
 
 export function MessageBubble({ role, content, toolCalls, isStreaming }: Props) {
   const isUser = role === "user"
+  const elapsed = useElapsedTime(!!(isStreaming && !isUser))
+
+  // Active tool = last pending tool (most recently started)
+  const pendingTools = toolCalls?.filter(tc => !tc.done) ?? []
+  const activeTool = pendingTools[pendingTools.length - 1]
+  const statusText = activeTool
+    ? (TOOL_STATUS[activeTool.name] ?? `${TOOL_LABELS[activeTool.name] ?? activeTool.name}...`)
+    : null
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: isUser ? "flex-end" : "flex-start" }}>
@@ -71,6 +108,7 @@ export function MessageBubble({ role, content, toolCalls, isStreaming }: Props) 
           </div>
         )}
 
+        {/* Content */}
         {isUser ? (
           <span style={{ whiteSpace: "pre-wrap", color: "var(--text)" }}>{content}</span>
         ) : content ? (
@@ -79,11 +117,25 @@ export function MessageBubble({ role, content, toolCalls, isStreaming }: Props) 
             {isStreaming && <span className="streaming-cursor" />}
           </div>
         ) : isStreaming ? (
-          <div className="thinking-dots">
-            <span /><span /><span />
-          </div>
+          statusText ? (
+            /* Tool is running — context-aware status */
+            <div className="processing-status">
+              <span className="processing-status-dot" />
+              <span className="processing-status-text">{statusText}</span>
+            </div>
+          ) : (
+            /* Pure thinking — dots */
+            <div className="thinking-dots">
+              <span /><span /><span />
+            </div>
+          )
         ) : null}
       </div>
+
+      {/* Elapsed time — appears after 1s, fades in */}
+      {!isUser && isStreaming && elapsed >= 1 && (
+        <span className="elapsed-timer">{elapsed.toFixed(1)}s</span>
+      )}
     </div>
   )
 }

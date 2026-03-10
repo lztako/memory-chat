@@ -8,6 +8,87 @@
 
 ---
 
+## Agent Layer — Phase 3 (Future)
+
+[ ] **UserAgent table** — per-company agent ที่ Origo สร้างให้
+- fields: name, systemPrompt, tools[], linkedSkills[], companyContext
+- ตัวอย่าง: "sugar-export-analyst" รู้ HS 1701, ตลาด China/Indonesia, pricing ICUMSA
+- บริษัท A (น้ำตาล) กับ B (เหล็ก) ได้ agent ต่างกันสิ้นเชิง
+- Origo สร้าง/แก้ไข agent ผ่าน Admin UI
+
+[ ] **Agent Workflows** — chain skills หลาย step อัตโนมัติ
+- ตัวอย่าง: "monthly_report" → query shipment → Tendata → cross-ref buyers → render chart
+- Phase ก่อน full agent: ใช้ skill chaining ที่มีอยู่แล้ว
+
+[ ] **Automation / Cron Workflows**
+- Agent รัน background task อัตโนมัติ เช่น Tendata sync รายสัปดาห์
+- Proactive alerts ส่งหา user เมื่อ condition ตรง
+
+---
+
+## Admin UI — Phase 2 (Next)
+
+[ ] **Admin UI** `/admin` — หน้า Origo team ใช้ แทนการยิง curl ด้วยมือ
+- list users + สถานะ dashboard, files, skills, agents ของแต่ละ user
+- set/edit widget config ผ่าน UI
+- upload file แทน user ได้
+- **User Graph View** — visualize การเชื่อมโยง per user (แรงบันดาลใจ: n8n, Opal, Supabase schema visualizer)
+  - node: User → Files → Dashboard Widgets → Skills → Agents → Memory
+  - เห็น dependency ทันทีว่า widget ไหนใช้ file ไหน, skill ไหน active, agent ไหน assign
+  - ช่วย Origo debug + configure ได้เร็วโดยไม่ต้องดู raw JSON
+- protected ด้วย ADMIN_SECRET
+- priority: **สูง**
+
+[ ] **File Versioning** — re-upload ไฟล์ใหม่ทดแทน fileId เดิมได้
+- upload ทับ fileId เดิม → dashboard config ไม่ต้องแก้เลย
+- priority: **ปานกลาง** — ทำหลัง Admin UI
+
+---
+
+## Local Data Sync — Architecture Decision
+
+**ข้อเท็จจริง**: ลูกค้า Origo เก็บข้อมูลใน **local computer** ทั้งหมด
+
+**Browser limitation**: Persistent local folder connection ทำไม่ได้ใน web — FileSystem API ต้องขอ permission ใหม่ทุก refresh (by design, ไม่มีทางเลี่ยง)
+
+**Roadmap ที่ตัดสินใจ:**
+
+Phase 2 — Folder Upload (Admin UI)
+- ลูกค้าส่ง folder มาให้ทีม Origo (USB / WeTransfer / Line / etc.)
+- ทีม Origo clean data
+- Admin UI → เลือก folder ทั้งอัน → upload พร้อมกันทุกไฟล์ (`webkitdirectory`)
+- เก็บใน DB → persistent ถาวร → AI + Dashboard ใช้ได้เลย
+- Origo จัดการทั้งหมด ลูกค้าไม่ต้องทำอะไร ✅
+
+Phase 3 — Desktop Companion App
+- Electron / Tauri app เล็กๆ ให้ลูกค้าติดตั้ง
+- เลือก folder ครั้งเดียว → watch อัตโนมัติ → sync ขึ้น server
+- Origo approve → อัปเดต dashboard
+- Real-time sync จริง แต่ต้องให้ลูกค้าติดตั้ง
+
+Phase 4 — Google Drive Migration (long-term vision)
+- แนะนำลูกค้าย้ายมาเก็บข้อมูลบน Google Drive
+- OAuth ครั้งเดียว → sync ถาวร → ไม่ต้องติดตั้งอะไร
+- เหมาะสุดระยะยาว แต่ต้องเปลี่ยน behavior ลูกค้า
+
+---
+
+## Dashboard — Next Steps (Priority)
+
+[ ] **Admin UI** — หน้า `/admin` สำหรับทีม Origo แทนการยิง curl ด้วยมือ
+- list users ทั้งหมด + สถานะ dashboard ของแต่ละคน
+- set/edit widget config ผ่าน UI (ไม่ต้องแตะ JSON)
+- upload file แทน user ได้
+- protected ด้วย ADMIN_SECRET เหมือน API ปัจจุบัน
+- priority: **สูง** — จำเป็นเมื่อ user เพิ่มขึ้น
+
+[ ] **File Versioning** — re-upload ไฟล์ใหม่ทดแทน fileId เดิมได้
+- ปัจจุบัน: upload ใหม่ → fileId ใหม่ → ต้องแก้ dashboard config ทุก widget
+- เป้าหมาย: upload ทับ fileId เดิม → dashboard config ไม่ต้องแก้เลย
+- priority: **ปานกลาง** — ทำหลัง Admin UI
+
+---
+
 ## Ideas
 
 [ ] Claude works directly in Excel — let Claude handle formulas, formatting, and data cleanup right inside your spreadsheets (Excel/Google Sheets integration)
