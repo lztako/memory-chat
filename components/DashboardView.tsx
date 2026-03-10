@@ -119,7 +119,7 @@ function BarChartWidget({ widget }: { widget: ComputedBarChart }) {
             axisLine={false} tickLine={false} width={52}
           />
           <Tooltip
-            formatter={(v: number) => [formatValue(v, widget.valueFormat ?? "currency_usd"), widget.title]}
+            formatter={(v) => [formatValue(Number(v), widget.valueFormat ?? "currency_usd"), widget.title]}
             contentStyle={{
               background: "var(--surface)", border: "1px solid var(--border)",
               borderRadius: 6, fontSize: 11,
