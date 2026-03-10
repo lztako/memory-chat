@@ -6,6 +6,12 @@ import {
 } from "recharts"
 import type { ComputedWidget, ComputedKPI, ComputedBarChart, ComputedDonut, ComputedTable } from "@/app/chat/dashboard/page"
 
+// layout field อยู่ใน widget config JSON
+// "layout": "full"  → gridColumn: "1 / -1" (เต็มแถว)
+// "layout": "half"  → ครึ่งแถว (default)
+// ไม่ระบุ           → half
+type WidgetWithLayout = ComputedWidget & { layout?: "full" | "half" }
+
 // ── Palette ────────────────────────────────────────────────────────
 const PALETTE = ["#2a2825", "#8b7355", "#c4a882", "#e8d5b7", "#6b8e7f", "#a0856b"]
 
@@ -297,10 +303,10 @@ function EmptyDashboard() {
 
 // ── Main Component ─────────────────────────────────────────────────
 export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
-  const kpis = widgets.filter((w): w is ComputedKPI => w.type === "kpi")
-  const barCharts = widgets.filter((w) => w.type === "bar_chart")
-  const donuts = widgets.filter((w) => w.type === "donut_chart")
-  const tables = widgets.filter((w): w is ComputedTable => w.type === "table")
+  const all = widgets as WidgetWithLayout[]
+  const kpis = all.filter((w): w is ComputedKPI & { layout?: "full" | "half" } => w.type === "kpi")
+  const charts = all.filter((w) => w.type === "bar_chart" || w.type === "donut_chart")
+  const tables = all.filter((w): w is ComputedTable & { layout?: "full" | "half" } => w.type === "table")
 
   if (widgets.length === 0) {
     return (
@@ -365,33 +371,46 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
           </div>
         )}
 
-        {/* Bar charts — full width each */}
-        {barCharts.map((w) => (
-          <div key={w.id} style={{ marginBottom: 12 }}>
-            <BarChartWidget widget={w as ComputedBarChart} />
-          </div>
-        ))}
-
-        {/* Donut charts — 2 per row */}
-        {donuts.length > 0 && (
+        {/* Charts — 2-column grid, layout:"full" spans both columns */}
+        {charts.length > 0 && (
           <div style={{
             display: "grid",
-            gridTemplateColumns: donuts.length === 1 ? "1fr" : "1fr 1fr",
+            gridTemplateColumns: "1fr 1fr",
             gap: 12,
             marginBottom: 12,
           }}>
-            {donuts.map((w) => (
-              <DonutWidget key={w.id} widget={w as ComputedDonut} />
-            ))}
+            {charts.map((w) => {
+              const isFull = (w as WidgetWithLayout).layout === "full"
+              return (
+                <div key={w.id} style={isFull ? { gridColumn: "1 / -1" } : {}}>
+                  {w.type === "bar_chart" && <BarChartWidget widget={w as ComputedBarChart} />}
+                  {w.type === "donut_chart" && <DonutWidget widget={w as ComputedDonut} />}
+                </div>
+              )
+            })}
           </div>
         )}
 
-        {/* Tables */}
-        {tables.map((w) => (
-          <div key={w.id} style={{ marginBottom: 16 }}>
-            <TableWidget widget={w} />
-          </div>
-        ))}
+        {/* Tables — default full, layout:"half" ใส่ใน 2-col grid */}
+        {tables.length > 0 && (() => {
+          const hasHalf = tables.some(w => w.layout === "half")
+          if (!hasHalf) {
+            return tables.map((w) => (
+              <div key={w.id} style={{ marginBottom: 12 }}>
+                <TableWidget widget={w} />
+              </div>
+            ))
+          }
+          return (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              {tables.map((w) => (
+                <div key={w.id} style={w.layout !== "half" ? { gridColumn: "1 / -1" } : {}}>
+                  <TableWidget widget={w} />
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
       </div>
     </div>
