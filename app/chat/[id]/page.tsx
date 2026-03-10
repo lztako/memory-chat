@@ -173,6 +173,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         body: JSON.stringify({ message, conversationId, folderContext, imageAttachments }),
         signal: controller.signal,
       })
+      if (res.status === 404) {
+        window.location.href = "/chat"
+        return
+      }
       if (!res.ok) throw new Error(`Error ${res.status}`)
 
       const reader = res.body!.getReader()

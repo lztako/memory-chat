@@ -33,6 +33,12 @@ export async function POST(req: Request) {
     imageAttachments?: Array<{ name: string; data: string; mimeType: string }>
   }
 
+  // Verify conversation exists before doing anything
+  const conversation = await conversationRepo.getById(conversationId)
+  if (!conversation) {
+    return new Response(JSON.stringify({ error: "Conversation not found" }), { status: 404 })
+  }
+
   const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks, skills] = await Promise.all([
     memoryRepo.getForInjectionSemantic(USER_ID, message),
     conversationRepo.getMessages(conversationId),

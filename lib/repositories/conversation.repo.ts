@@ -12,6 +12,10 @@ export const conversationRepo = {
     })
   },
 
+  async getById(conversationId: string) {
+    return prisma.conversation.findUnique({ where: { id: conversationId } })
+  },
+
   async getMessages(conversationId: string, limit = 20) {
     return prisma.message.findMany({
       where: { conversationId },
