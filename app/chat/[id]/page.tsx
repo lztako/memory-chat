@@ -306,7 +306,13 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             <div style={{ textAlign: "center", color: "var(--text3)", marginTop: 64, fontSize: 13 }}>Start a conversation...</div>
           ) : (
             messages.map((m, i) => (
-              <MessageBubble key={i} role={m.role} content={m.content} toolCalls={m.toolCalls} />
+              <MessageBubble
+                key={i}
+                role={m.role}
+                content={m.content}
+                toolCalls={m.toolCalls}
+                isStreaming={isStreaming && i === messages.length - 1}
+              />
             ))
           )}
           <div ref={bottomRef} />
