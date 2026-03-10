@@ -8,6 +8,7 @@ interface Props {
   role: "user" | "assistant"
   content: string
   toolCalls?: ToolCall[]
+  isStreaming?: boolean
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -23,7 +24,7 @@ const TOOL_LABELS: Record<string, string> = {
   save_user_config: "Saving config",
 }
 
-export function MessageBubble({ role, content, toolCalls }: Props) {
+export function MessageBubble({ role, content, toolCalls, isStreaming }: Props) {
   const isUser = role === "user"
 
   return (
@@ -42,7 +43,7 @@ export function MessageBubble({ role, content, toolCalls }: Props) {
       }}>
         {/* Tool call badges */}
         {!isUser && toolCalls && toolCalls.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: content ? 10 : 0 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: content ? 10 : 6 }}>
             {toolCalls.map((tc) => (
               <span
                 key={tc.id}
@@ -72,13 +73,16 @@ export function MessageBubble({ role, content, toolCalls }: Props) {
 
         {isUser ? (
           <span style={{ whiteSpace: "pre-wrap", color: "var(--text)" }}>{content}</span>
-        ) : (
-          content && (
-            <div className="markdown-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-            </div>
-          )
-        )}
+        ) : content ? (
+          <div className="markdown-content" style={{ position: "relative" }}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            {isStreaming && <span className="streaming-cursor" />}
+          </div>
+        ) : isStreaming ? (
+          <div className="thinking-dots">
+            <span /><span /><span />
+          </div>
+        ) : null}
       </div>
     </div>
   )
