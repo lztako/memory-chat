@@ -18,7 +18,16 @@ model User {
   tendataUsage   TendataUsage[]
   tokenUsage     TokenUsage[]
   tradeData      UserTradeData[]
+  dashboard      UserDashboard?
   createdAt      DateTime        @default(now())
+}
+
+model UserDashboard {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  widgets   Json     @default("[]")
+  updatedAt DateTime @updatedAt
 }
 
 model UserSkill {

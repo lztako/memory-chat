@@ -1,0 +1,41 @@
+invoice_no,date,buyer,country,product,hs_code,quantity_mt,unit_price_usd,total_value_usd,payment_terms,vessel,etd,eta,status
+INV-2024-001,2024-01-08,Sino Sweet Trading Co.,China,White Sugar 45 ICUMSA,17019900,500,420.00,210000.00,LC 30 days,MV Ocean Star,2024-01-10,2024-01-18,Delivered
+INV-2024-002,2024-01-15,PT Gula Manis Indonesia,Indonesia,Raw Sugar 600 ICUMSA,17011400,1200,385.00,462000.00,TT in advance,MV Pacific Jade,2024-01-18,2024-01-25,Delivered
+INV-2024-003,2024-01-22,Cambodian Food Import Ltd.,Cambodia,White Sugar 45 ICUMSA,17019900,300,425.00,127500.00,TT in advance,MV Mekong Star,2024-01-24,2024-01-27,Delivered
+INV-2024-004,2024-02-03,Korea Sugar Corp.,South Korea,White Sugar 45 ICUMSA,17019900,800,435.00,348000.00,LC 60 days,MV Seoul Express,2024-02-06,2024-02-14,Delivered
+INV-2024-005,2024-02-10,Malaysia Sweet Sdn Bhd,Malaysia,Brown Sugar,17019100,400,395.00,158000.00,TT in advance,MV Straits Pearl,2024-02-12,2024-02-16,Delivered
+INV-2024-006,2024-02-18,Sino Sweet Trading Co.,China,Raw Sugar 600 ICUMSA,17011400,1500,380.00,570000.00,LC 30 days,MV Dragon Pearl,2024-02-21,2024-03-01,Delivered
+INV-2024-007,2024-03-02,Japan Sugar Import KK,Japan,White Sugar 45 ICUMSA,17019900,600,450.00,270000.00,LC 60 days,MV Sakura Maru,2024-03-05,2024-03-14,Delivered
+INV-2024-008,2024-03-11,PT Gula Manis Indonesia,Indonesia,White Sugar 45 ICUMSA,17019900,1000,428.00,428000.00,TT in advance,MV Bali Star,2024-03-14,2024-03-21,Delivered
+INV-2024-009,2024-03-20,Vietnam Sweet JSC,Vietnam,Raw Sugar 600 ICUMSA,17011400,800,382.00,305600.00,TT in advance,MV Saigon Express,2024-03-22,2024-03-25,Delivered
+INV-2024-010,2024-04-01,Cambodian Food Import Ltd.,Cambodia,Brown Sugar,17019100,250,398.00,99500.00,TT in advance,MV Phnom Star,2024-04-03,2024-04-06,Delivered
+INV-2024-011,2024-04-08,Sino Sweet Trading Co.,China,White Sugar 45 ICUMSA,17019900,2000,415.00,830000.00,LC 30 days,MV China Glory,2024-04-11,2024-04-19,Delivered
+INV-2024-012,2024-04-15,Korea Sugar Corp.,South Korea,Raw Sugar 600 ICUMSA,17011400,700,378.00,264600.00,LC 60 days,LC 60 days,2024-04-18,2024-04-26,Delivered
+INV-2024-013,2024-05-03,Malaysia Sweet Sdn Bhd,Malaysia,White Sugar 45 ICUMSA,17019900,500,432.00,216000.00,TT in advance,MV KL Express,2024-05-06,2024-05-10,Delivered
+INV-2024-014,2024-05-12,Japan Sugar Import KK,Japan,White Sugar 45 ICUMSA,17019900,800,455.00,364000.00,LC 60 days,MV Fuji Maru,2024-05-15,2024-05-24,Delivered
+INV-2024-015,2024-05-20,PT Gula Manis Indonesia,Indonesia,Brown Sugar,17019100,600,392.00,235200.00,TT in advance,MV Java Star,2024-05-23,2024-05-30,Delivered
+INV-2024-016,2024-06-02,Vietnam Sweet JSC,Vietnam,White Sugar 45 ICUMSA,17019900,400,430.00,172000.00,TT in advance,MV Ho Chi Minh,2024-06-04,2024-06-07,Delivered
+INV-2024-017,2024-06-10,Sino Sweet Trading Co.,China,Raw Sugar 600 ICUMSA,17011400,1800,375.00,675000.00,LC 30 days,MV Shanghai Star,2024-06-13,2024-06-21,Delivered
+INV-2024-018,2024-06-22,Philippines Sugar Inc.,Philippines,White Sugar 45 ICUMSA,17019900,350,438.00,153300.00,TT in advance,MV Manila Bay,2024-06-25,2024-06-29,Delivered
+INV-2024-019,2024-07-04,Korea Sugar Corp.,South Korea,White Sugar 45 ICUMSA,17019900,900,440.00,396000.00,LC 60 days,MV Busan Star,2024-07-07,2024-07-15,Delivered
+INV-2024-020,2024-07-14,Malaysia Sweet Sdn Bhd,Malaysia,Raw Sugar 600 ICUMSA,17011400,500,376.00,188000.00,TT in advance,MV Penang Pearl,2024-07-17,2024-07-21,Delivered
+INV-2024-021,2024-07-22,Japan Sugar Import KK,Japan,Brown Sugar,17019100,300,402.00,120600.00,LC 60 days,MV Osaka Maru,2024-07-25,2024-08-03,Delivered
+INV-2024-022,2024-08-05,PT Gula Manis Indonesia,Indonesia,White Sugar 45 ICUMSA,17019900,1100,425.00,467500.00,TT in advance,MV Surabaya Star,2024-08-08,2024-08-15,Delivered
+INV-2024-023,2024-08-14,Sino Sweet Trading Co.,China,White Sugar 45 ICUMSA,17019900,1500,418.00,627000.00,LC 30 days,MV Guangzhou Star,2024-08-17,2024-08-25,Delivered
+INV-2024-024,2024-08-25,Cambodian Food Import Ltd.,Cambodia,White Sugar 45 ICUMSA,17019900,200,432.00,86400.00,TT in advance,MV Mekong Pearl,2024-08-27,2024-08-30,Delivered
+INV-2024-025,2024-09-03,Vietnam Sweet JSC,Vietnam,Raw Sugar 600 ICUMSA,17011400,700,379.00,265300.00,TT in advance,MV Hanoi Express,2024-09-05,2024-09-08,Delivered
+INV-2024-026,2024-09-10,Philippines Sugar Inc.,Philippines,Brown Sugar,17019100,280,400.00,112000.00,TT in advance,MV Cebu Star,2024-09-13,2024-09-17,Delivered
+INV-2024-027,2024-09-20,Korea Sugar Corp.,South Korea,White Sugar 45 ICUMSA,17019900,1000,442.00,442000.00,LC 60 days,MV Incheon Star,2024-09-23,2024-10-01,Delivered
+INV-2024-028,2024-10-04,Malaysia Sweet Sdn Bhd,Malaysia,White Sugar 45 ICUMSA,17019900,600,435.00,261000.00,TT in advance,MV Johor Star,2024-10-07,2024-10-11,Delivered
+INV-2024-029,2024-10-14,Japan Sugar Import KK,Japan,White Sugar 45 ICUMSA,17019900,700,458.00,320600.00,LC 60 days,MV Tokyo Maru,2024-10-17,2024-10-26,Delivered
+INV-2024-030,2024-10-22,Sino Sweet Trading Co.,China,Raw Sugar 600 ICUMSA,17011400,2000,372.00,744000.00,LC 30 days,MV Shenzhen Star,2024-10-25,2024-11-02,Delivered
+INV-2024-031,2024-11-02,PT Gula Manis Indonesia,Indonesia,White Sugar 45 ICUMSA,17019900,900,428.00,385200.00,TT in advance,MV Jakarta Star,2024-11-05,2024-11-12,Delivered
+INV-2024-032,2024-11-12,Vietnam Sweet JSC,Vietnam,White Sugar 45 ICUMSA,17019900,450,433.00,194850.00,TT in advance,MV Saigon Star,2024-11-15,2024-11-18,Delivered
+INV-2024-033,2024-11-22,Philippines Sugar Inc.,Philippines,White Sugar 45 ICUMSA,17019900,320,440.00,140800.00,TT in advance,MV Manila Star,2024-11-25,2024-11-29,Delivered
+INV-2024-034,2024-12-03,Korea Sugar Corp.,South Korea,Raw Sugar 600 ICUMSA,17011400,800,374.00,299200.00,LC 60 days,MV Seoul Star,2024-12-06,2024-12-14,Delivered
+INV-2024-035,2024-12-10,Sino Sweet Trading Co.,China,White Sugar 45 ICUMSA,17019900,1200,422.00,506400.00,LC 30 days,MV Beijing Star,2024-12-13,2024-12-21,In Transit
+INV-2024-036,2024-12-18,Malaysia Sweet Sdn Bhd,Malaysia,Brown Sugar,17019100,350,398.00,139300.00,TT in advance,MV Kuala Lumpur,2024-12-20,2024-12-24,In Transit
+INV-2024-037,2025-01-05,Japan Sugar Import KK,Japan,White Sugar 45 ICUMSA,17019900,750,462.00,346500.00,LC 60 days,MV Yokohama Maru,2025-01-08,2025-01-17,In Transit
+INV-2025-038,2025-01-12,PT Gula Manis Indonesia,Indonesia,Raw Sugar 600 ICUMSA,17011400,1000,377.00,377000.00,TT in advance,MV Bali Pearl,2025-01-15,2025-01-22,Pending
+INV-2025-039,2025-01-20,Cambodian Food Import Ltd.,Cambodia,White Sugar 45 ICUMSA,17019900,280,438.00,122640.00,TT in advance,,2025-01-23,,Pending
+INV-2025-040,2025-01-25,Vietnam Sweet JSC,Vietnam,White Sugar 45 ICUMSA,17019900,500,435.00,217500.00,TT in advance,,2025-01-28,,Pending

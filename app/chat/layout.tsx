@@ -142,6 +142,15 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
             </svg>
             Tasks
           </Link>
+          <Link href="/chat/dashboard" className="nav-item-sidebar" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 9, padding: "7px 8px", borderRadius: 6, fontSize: 12, fontWeight: 500, color: "var(--text2)", marginBottom: 1 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            Dashboard
+          </Link>
         </div>
 
         {/* Footer */}

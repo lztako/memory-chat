@@ -1,0 +1,13 @@
+-- ติดต่อ supplier ใหม่ --
+
+1. Mr. Wang - ABC Trading - +86 138 0000 1234
+   สินค้า: Steel pipe, fittings
+   หมายเหตุ: ราคา FOB Shanghai, MOQ 5 tons
+
+2. Ms. Nguyen - Sunflower - +84 90 000 5678
+   สินค้า: Agricultural equipment
+   หมายเหตุ: ต้องการ LC payment เท่านั้น
+
+3. Budi - PT. Maju Bersama - +62 812 0000 9999
+   สินค้า: Rubber products
+   หมายเหตุ: sample ฟรี 2 ชิ้นแรก

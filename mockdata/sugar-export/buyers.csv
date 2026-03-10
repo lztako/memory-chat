@@ -1,0 +1,9 @@
+buyer_name,country,contact_person,email,phone,first_order_date,total_orders,total_volume_mt,total_value_usd,payment_terms,preferred_product,status
+Sino Sweet Trading Co.,China,Wang Wei,wangwei@sinosweet.cn,+86-21-5555-0101,2023-03-15,12,15800,6421400.00,LC 30 days,White Sugar / Raw Sugar,Active
+PT Gula Manis Indonesia,Indonesia,Budi Santoso,budi@gulamanis.co.id,+62-21-5555-0202,2023-05-20,9,8300,3354900.00,TT in advance,White Sugar,Active
+Korea Sugar Corp.,South Korea,Kim Jae-won,jaewon@koreasugarcorp.kr,+82-2-5555-0303,2023-07-10,7,5200,2149800.00,LC 60 days,White Sugar,Active
+Japan Sugar Import KK,Japan,Tanaka Hiroshi,tanaka@japansugar.jp,+81-3-5555-0404,2023-08-01,6,3850,1621100.00,LC 60 days,White Sugar,Active
+Malaysia Sweet Sdn Bhd,Malaysia,Ahmad Razif,razif@malaysisweet.my,+60-3-5555-0505,2023-09-15,6,2350,957300.00,TT in advance,White Sugar / Brown Sugar,Active
+Vietnam Sweet JSC,Vietnam,Nguyen Thi Lan,lan@vietnamsweet.vn,+84-28-5555-0606,2023-11-01,5,2850,1155250.00,TT in advance,White Sugar / Raw Sugar,Active
+Cambodian Food Import Ltd.,Cambodia,Sok Piseth,piseth@camfood.kh,+855-23-5555-0707,2024-01-22,4,1030,435640.00,TT in advance,White Sugar,Active
+Philippines Sugar Inc.,Philippines,Maria Santos,maria@philsugar.ph,+63-2-5555-0808,2024-06-18,3,950,406100.00,TT in advance,White Sugar / Brown Sugar,Active

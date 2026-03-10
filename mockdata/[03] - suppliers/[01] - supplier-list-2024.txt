@@ -1,0 +1,6 @@
+company name,country,contact
+ABC Trading Co.,China,john@abc.com
+sunflower import export,Vietnam,info@sunflower.vn
+PT. maju bersama,Indonesia,purchasing@majubersama.id
+golden dragon ltd,Thailand,sales@goldendragon.th
+KOREA PARTS INC,South Korea,export@koreaparts.kr

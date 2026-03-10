@@ -1,0 +1,6 @@
+Container No. | Status | Location | Updated
+TCKU3456789 | Departed | Shanghai Port | 2024-03-16 08:00
+MSDU7891234 | In Transit | South China Sea | 2024-03-18 14:30
+CAIU5556789 | Arrived | Laem Chabang | 2024-04-01 09:15
+TCKU3456789 | Customs Cleared | Laem Chabang | 2024-04-03 11:00
+MSDU7891234 | Pending Customs | Laem Chabang | 2024-04-02 17:00

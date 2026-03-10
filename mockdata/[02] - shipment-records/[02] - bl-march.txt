@@ -1,0 +1,14 @@
+B/L No.: COSU1234567890
+Vessel: EVER GOLDEN
+ETD: 2024-03-15 (Shanghai)
+ETA: 2024-04-02 (Laem Chabang)
+
+Shipper: ABC Trading Co. Ltd.
+Consignee: Origo Import Export Co., Ltd.
+
+Cargo:
+- Steel Pipe 2" x 6m — 500 pcs — 3,500 kg
+- Elbow Fitting 2" — 1,000 pcs — 200 kg
+
+Total CBM: 12.5
+Freight: Prepaid
