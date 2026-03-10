@@ -22,16 +22,17 @@ model User {
 }
 
 model UserSkill {
-  id          String   @id @default(cuid())
+  id          String                      @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User                        @relation(fields: [userId], references: [id])
   name        String
   trigger     String
   solution    String
-  tools       String[] @default([])
-  usageCount  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  tools       String[]                    @default([])
+  usageCount  Int                         @default(0)
+  embedding   Unsupported("vector(512)")?
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
 
   @@index([userId])
 }
@@ -75,16 +76,17 @@ model Message {
 }
 
 model Memory {
-  id         String   @id @default(cuid())
+  id         String                  @id @default(cuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User                    @relation(fields: [userId], references: [id])
   type       String
   content    String
-  importance Int      @default(3)
-  layer      String   @default("long_term")
-  lastUsedAt DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  importance Int                     @default(3)
+  layer      String                  @default("long_term")
+  embedding  Unsupported("vector(512)")?
+  lastUsedAt DateTime                @default(now())
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
 
   @@index([userId, importance])
   @@index([userId, layer, importance])

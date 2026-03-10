@@ -178,6 +178,7 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 | [002](docs/adr/ADR-002-haiku-extraction.md) | Memory extraction ใช้ Haiku | Accepted | — |
 | [003](docs/adr/ADR-003-db-rate-limit.md) | Rate limit → DB-backed | Accepted | 2026-03-10 |
 | [004](docs/adr/ADR-004-tendata-architecture.md) | Tendata backend-only via UserTradeData | Accepted | 2026-03-10 |
+| [005](docs/adr/ADR-005-pgvector-semantic-memory.md) | pgvector semantic memory search | Accepted | 2026-03-10 |
 
 ---
 
