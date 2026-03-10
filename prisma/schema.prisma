@@ -7,15 +7,17 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  conversations Conversation[]
-  memories      Memory[]
-  files         UserFile[]
-  tasks         Task[]
-  skills        UserSkill[]
-  createdAt     DateTime       @default(now())
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  conversations  Conversation[]
+  memories       Memory[]
+  files          UserFile[]
+  tasks          Task[]
+  skills         UserSkill[]
+  tendataUsage   TendataUsage[]
+  tokenUsage     TokenUsage[]
+  createdAt      DateTime        @default(now())
 }
 
 model UserSkill {
@@ -25,6 +27,7 @@ model UserSkill {
   name        String
   trigger     String
   solution    String
+  tools       String[] @default([])
   usageCount  Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -101,6 +104,29 @@ model Task {
 
   @@index([userId, status])
   @@index([userId, dueDate])
+}
+
+model TendataUsage {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date   String // YYYY-MM-DD UTC
+  points Int    @default(0)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model TokenUsage {
+  id           String @id @default(cuid())
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         String // YYYY-MM-DD UTC
+  inputTokens  Int    @default(0)
+  outputTokens Int    @default(0)
+
+  @@unique([userId, date])
+  @@index([userId])
 }
 
 model ConversationContext {

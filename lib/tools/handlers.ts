@@ -1,4 +1,5 @@
 import { memoryRepo } from "@/lib/repositories/memory.repo"
+import { queryAttachedFile } from "@/lib/session/attached-files"
 import { contextRepo } from "@/lib/repositories/context.repo"
 import { fileRepo } from "@/lib/repositories/file.repo"
 import { taskRepo } from "@/lib/repositories/task.repo"
@@ -100,6 +101,15 @@ export async function executeToolCall(
       }
     }
 
+    case "rename_user_file": {
+      const fileId = toolInput.fileId as string
+      const newName = toolInput.newName as string
+      const file = await fileRepo.getById(fileId, userId)
+      if (!file) return { error: "ไม่พบไฟล์ กรุณาตรวจสอบ fileId อีกครั้ง" }
+      await fileRepo.rename(fileId, userId, newName)
+      return { success: true, message: `เปลี่ยนชื่อไฟล์จาก "${file.fileName}" เป็น "${newName}" เรียบร้อยแล้ว` }
+    }
+
     case "update_user_config": {
       const key = toolInput.key as string
       const value = toolInput.value as string
@@ -138,7 +148,7 @@ export async function executeToolCall(
         return { error: "ต้องระบุอย่างน้อยหนึ่งอย่าง: hsCode หรือ productDesc" }
       }
 
-      const limitCheck = checkTendataLimit(userId, estimatedPoints)
+      const limitCheck = await checkTendataLimit(userId, estimatedPoints)
       if (!limitCheck.allowed) {
         return { error: limitCheck.errorMessage }
       }
@@ -171,7 +181,7 @@ export async function executeToolCall(
           sumOfUSD: valueMinUSD != null && valueMaxUSD != null ? [valueMinUSD, valueMaxUSD] : undefined,
           pageSize,
         })
-        recordTendataUsage(userId, estimatedPoints)
+        await recordTendataUsage(userId, estimatedPoints)
         return result
       } catch (err) {
         return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
@@ -194,7 +204,7 @@ export async function executeToolCall(
         return { error: "ต้องระบุอย่างน้อยหนึ่งอย่าง: hsCode หรือ productDesc" }
       }
 
-      const limitCheck = checkTendataLimit(userId, estimatedPoints)
+      const limitCheck = await checkTendataLimit(userId, estimatedPoints)
       if (!limitCheck.allowed) {
         return { error: limitCheck.errorMessage }
       }
@@ -218,7 +228,7 @@ export async function executeToolCall(
           countryOfDestinationCode: toolInput.countryOfDestinationCode as string | undefined,
           pageSize,
         })
-        recordTendataUsage(userId, estimatedPoints)
+        await recordTendataUsage(userId, estimatedPoints)
         return result
       } catch (err) {
         return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
@@ -241,7 +251,7 @@ export async function executeToolCall(
         return { error: "ต้องระบุอย่างน้อยหนึ่งอย่าง: hsCode, importer, หรือ exporter" }
       }
 
-      const limitCheck = checkTendataLimit(userId, estimatedPoints)
+      const limitCheck = await checkTendataLimit(userId, estimatedPoints)
       if (!limitCheck.allowed) {
         return { error: limitCheck.errorMessage }
       }
@@ -263,7 +273,7 @@ export async function executeToolCall(
           exporter,
           pageSize,
         })
-        recordTendataUsage(userId, estimatedPoints)
+        await recordTendataUsage(userId, estimatedPoints)
         return result
       } catch (err) {
         return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
@@ -281,8 +291,19 @@ export async function executeToolCall(
         name,
         trigger: toolInput.trigger as string,
         solution: toolInput.solution as string,
+        tools: (toolInput.tools as string[] | undefined) ?? [],
       })
       return { success: true, id: skill.id, message: `บันทึก skill "${name}" แล้ว` }
+    }
+
+    case "query_attached_file": {
+      const fileId = toolInput.fileId as string
+      const result = queryAttachedFile(conversationId, fileId, {
+        filter: toolInput.filter as string | undefined,
+        limit: toolInput.limit as number | undefined,
+        offset: toolInput.offset as number | undefined,
+      })
+      return result
     }
 
     case "render_artifact": {
