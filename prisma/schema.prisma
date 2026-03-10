@@ -17,6 +17,7 @@ model User {
   skills         UserSkill[]
   tendataUsage   TendataUsage[]
   tokenUsage     TokenUsage[]
+  tradeData      UserTradeData[]
   createdAt      DateTime        @default(now())
 }
 
@@ -104,6 +105,22 @@ model Task {
 
   @@index([userId, status])
   @@index([userId, dueDate])
+}
+
+model UserTradeData {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skuTag         String   // HS code หรือ product keyword
+  dataType       String   // "company_list" | "company_ranking" | "shipment_records"
+  tradeDirection String   // "import" | "export"
+  country        String?  // optional country filter applied during fetch
+  content        Json     // transformed data from Tendata
+  sourceParams   Json?    // original query params (for re-fetch)
+  fetchedAt      DateTime @default(now())
+
+  @@index([userId, skuTag])
+  @@index([userId, dataType])
 }
 
 model TendataUsage {

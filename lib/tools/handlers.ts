@@ -4,8 +4,7 @@ import { contextRepo } from "@/lib/repositories/context.repo"
 import { fileRepo } from "@/lib/repositories/file.repo"
 import { taskRepo } from "@/lib/repositories/task.repo"
 import { skillRepo } from "@/lib/repositories/skill.repo"
-import { queryTrade, listTradeCompanies, rankTradeCompanies } from "@/lib/tendata/client"
-import { checkTendataLimit, recordTendataUsage } from "@/lib/tendata/rate-limit"
+import { tradeDataRepo } from "@/lib/repositories/trade-data.repo"
 import { Prisma } from "@prisma/client"
 
 export async function executeToolCall(
@@ -132,151 +131,36 @@ export async function executeToolCall(
       return { success: true, key, value }
     }
 
-    case "list_trade_companies": {
-      if (!process.env.TENDATA_API_KEY) {
-        return { error: "Trade data is not available in this environment." }
+    case "search_market_data": {
+      const skuTag = toolInput.skuTag as string
+      const tradeDirection = toolInput.tradeDirection as string | undefined
+      const country = toolInput.country as string | undefined
+      const dataType = toolInput.dataType as string | undefined
+
+      const results = await tradeDataRepo.search(userId, { skuTag, tradeDirection, country, dataType })
+
+      if (results.length === 0) {
+        return {
+          found: false,
+          message: `ยังไม่มีข้อมูลตลาดสำหรับ "${skuTag}" ในฐานข้อมูล กรุณาแจ้งทีมงานเพื่อรวบรวมข้อมูลนี้`,
+          skuTag,
+        }
       }
 
-      const type = toolInput.type as "importers" | "exporters"
-      const catalog = toolInput.catalog as "imports" | "exports"
-      const hsCode = toolInput.hsCode as string | undefined
-      const productDesc = toolInput.productDesc as string | undefined
-      const pageSize = (toolInput.pageSize as number | undefined) ?? 10
-      const estimatedPoints = pageSize * 1
-
-      if (!hsCode && !productDesc) {
-        return { error: "ต้องระบุอย่างน้อยหนึ่งอย่าง: hsCode หรือ productDesc" }
-      }
-
-      const limitCheck = await checkTendataLimit(userId, estimatedPoints)
-      if (!limitCheck.allowed) {
-        return { error: limitCheck.errorMessage }
-      }
-
-      const today = new Date()
-      const oneYearAgo = new Date(today)
-      oneYearAgo.setFullYear(today.getFullYear() - 1)
-
-      const endDate = (toolInput.endDate as string | undefined) ?? today.toISOString().slice(0, 10)
-      const startDate = (toolInput.startDate as string | undefined) ?? oneYearAgo.toISOString().slice(0, 10)
-
-      const weightMin = toolInput.weightMin as number | undefined
-      const weightMax = toolInput.weightMax as number | undefined
-      const valueMinUSD = toolInput.valueMinUSD as number | undefined
-      const valueMaxUSD = toolInput.valueMaxUSD as number | undefined
-
-      try {
-        const result = await listTradeCompanies(type, {
-          catalog,
-          startDate,
-          endDate,
-          hsCode,
-          productDesc,
-          countryOfOriginCode: toolInput.countryOfOriginCode as string | undefined,
-          countryOfDestinationCode: toolInput.countryOfDestinationCode as string | undefined,
-          portOfDeparture: toolInput.portOfDeparture as string | undefined,
-          portOfArrival: toolInput.portOfArrival as string | undefined,
-          transportType: toolInput.transportType as string | undefined,
-          weight: weightMin != null && weightMax != null ? [weightMin, weightMax] : undefined,
-          sumOfUSD: valueMinUSD != null && valueMaxUSD != null ? [valueMinUSD, valueMaxUSD] : undefined,
-          pageSize,
-        })
-        await recordTendataUsage(userId, estimatedPoints)
-        return result
-      } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
-      }
-    }
-
-    case "rank_trade_companies": {
-      if (!process.env.TENDATA_API_KEY) {
-        return { error: "Trade data is not available in this environment." }
-      }
-
-      const type = toolInput.type as "importers" | "exporters"
-      const catalog = toolInput.catalog as "imports" | "exports"
-      const hsCode = toolInput.hsCode as string | undefined
-      const productDesc = toolInput.productDesc as string | undefined
-      const pageSize = (toolInput.pageSize as number | undefined) ?? 10
-      const estimatedPoints = pageSize * 12
-
-      if (!hsCode && !productDesc) {
-        return { error: "ต้องระบุอย่างน้อยหนึ่งอย่าง: hsCode หรือ productDesc" }
-      }
-
-      const limitCheck = await checkTendataLimit(userId, estimatedPoints)
-      if (!limitCheck.allowed) {
-        return { error: limitCheck.errorMessage }
-      }
-
-      const today = new Date()
-      const oneYearAgo = new Date(today)
-      oneYearAgo.setFullYear(today.getFullYear() - 1)
-
-      const endDate = (toolInput.endDate as string | undefined) ?? today.toISOString().slice(0, 10)
-      const startDate = (toolInput.startDate as string | undefined) ?? oneYearAgo.toISOString().slice(0, 10)
-
-      try {
-        const result = await rankTradeCompanies({
-          type,
-          catalog,
-          startDate,
-          endDate,
-          hsCode,
-          productDesc,
-          countryOfOriginCode: toolInput.countryOfOriginCode as string | undefined,
-          countryOfDestinationCode: toolInput.countryOfDestinationCode as string | undefined,
-          pageSize,
-        })
-        await recordTendataUsage(userId, estimatedPoints)
-        return result
-      } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
-      }
-    }
-
-    case "query_trade_data": {
-      if (!process.env.TENDATA_API_KEY) {
-        return { error: "Trade data is not available in this environment." }
-      }
-
-      const catalog = toolInput.catalog as "imports" | "exports"
-      const hsCode = toolInput.hsCode as string | undefined
-      const importer = toolInput.importer as string | undefined
-      const exporter = toolInput.exporter as string | undefined
-      const pageSize = (toolInput.pageSize as number | undefined) ?? 10
-      const estimatedPoints = pageSize * 6
-
-      if (!hsCode && !importer && !exporter) {
-        return { error: "ต้องระบุอย่างน้อยหนึ่งอย่าง: hsCode, importer, หรือ exporter" }
-      }
-
-      const limitCheck = await checkTendataLimit(userId, estimatedPoints)
-      if (!limitCheck.allowed) {
-        return { error: limitCheck.errorMessage }
-      }
-
-      const today = new Date()
-      const oneYearAgo = new Date(today)
-      oneYearAgo.setFullYear(today.getFullYear() - 1)
-
-      const endDate = (toolInput.endDate as string | undefined) ?? today.toISOString().slice(0, 10)
-      const startDate = (toolInput.startDate as string | undefined) ?? oneYearAgo.toISOString().slice(0, 10)
-
-      try {
-        const result = await queryTrade({
-          catalog,
-          startDate,
-          endDate,
-          hsCode,
-          importer,
-          exporter,
-          pageSize,
-        })
-        await recordTendataUsage(userId, estimatedPoints)
-        return result
-      } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error from Tendata API" }
+      const staleItems = results.filter((r) => r.stale)
+      return {
+        found: true,
+        count: results.length,
+        staleCount: staleItems.length,
+        staleNote: staleItems.length > 0 ? `ข้อมูล ${staleItems.length} รายการอาจล้าสมัย (เกิน 90 วัน) — แนะนำให้แจ้งทีมงานอัปเดต` : undefined,
+        data: results.map((r) => ({
+          dataType: r.dataType,
+          tradeDirection: r.tradeDirection,
+          country: r.country,
+          fetchedAt: r.fetchedAt,
+          stale: r.stale,
+          content: r.content,
+        })),
       }
     }
 

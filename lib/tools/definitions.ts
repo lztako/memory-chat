@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk"
 
+// ─── Main tools (sent to Claude API) ─────────────────────────────────────────
 export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "save_memory",
@@ -125,129 +126,32 @@ export const toolDefinitions: Anthropic.Tool[] = [
     },
   },
   {
-    name: "list_trade_companies",
+    name: "search_market_data",
     description:
-      "ค้นหารายชื่อ importer หรือ exporter จาก Tendata ตาม HS Code หรือชื่อสินค้า — ถูกกว่า query_trade_data 6 เท่า ใช้เมื่อ user ต้องการแค่รายชื่อบริษัท ไม่ต้องการ records ละเอียด",
+      "ค้นหาข้อมูลตลาดการค้า (ผู้นำเข้า/ส่งออก, ranking, shipment records) จากฐานข้อมูลที่ทีมงานรวบรวมไว้ ใช้เมื่อ user ถามเกี่ยวกับ supplier, ตลาด, หรือคู่แข่งสำหรับสินค้าของตัวเอง — ไม่มีค่าใช้จ่ายเพิ่มเติม",
     input_schema: {
       type: "object",
       properties: {
-        type: {
+        skuTag: {
           type: "string",
-          enum: ["importers", "exporters"],
-          description: "ต้องการรายชื่อ importer หรือ exporter",
+          description: "HS Code หรือ keywords ของสินค้า เช่น '8708', 'automotive parts', 'steel pipes'",
         },
-        catalog: {
+        tradeDirection: {
           type: "string",
-          enum: ["imports", "exports"],
-          description: "ทิศทางการค้า: imports หรือ exports",
+          enum: ["import", "export"],
+          description: "ทิศทางการค้า — import (หา supplier/ผู้ส่งออก) หรือ export (หาตลาด/ผู้ซื้อ)",
         },
-        hsCode: {
+        country: {
           type: "string",
-          description: "HS Code สินค้า เช่น '63049239'",
+          description: "ประเทศที่สนใจ เช่น 'Germany', 'Thailand', 'China'",
         },
-        productDesc: {
+        dataType: {
           type: "string",
-          description: "คำอธิบายสินค้าเป็นภาษาอังกฤษ คั่นหลายคำด้วย ';'",
-        },
-        countryOfOriginCode: {
-          type: "string",
-          description: "รหัสประเทศต้นทาง เช่น 'CHN', 'THA'",
-        },
-        countryOfDestinationCode: {
-          type: "string",
-          description: "รหัสประเทศปลายทาง เช่น 'USA', 'JPN'",
-        },
-        portOfDeparture: {
-          type: "string",
-          description: "ท่าเรือต้นทาง เช่น 'Shanghai', 'Nhava Sheva'",
-        },
-        portOfArrival: {
-          type: "string",
-          description: "ท่าเรือปลายทาง เช่น 'Los Angeles', 'New York'",
-        },
-        transportType: {
-          type: "string",
-          description: "วิธีขนส่ง เช่น 'Sea Freight', 'Air Freight'",
-        },
-        weightMin: {
-          type: "number",
-          description: "น้ำหนักต่ำสุด หน่วย kg",
-        },
-        weightMax: {
-          type: "number",
-          description: "น้ำหนักสูงสุด หน่วย kg",
-        },
-        valueMinUSD: {
-          type: "number",
-          description: "มูลค่าการค้าต่ำสุด หน่วย USD",
-        },
-        valueMaxUSD: {
-          type: "number",
-          description: "มูลค่าการค้าสูงสุด หน่วย USD",
-        },
-        startDate: {
-          type: "string",
-          description: "วันเริ่มต้น format YYYY-MM-DD (default: 1 ปีก่อนหน้า)",
-        },
-        endDate: {
-          type: "string",
-          description: "วันสิ้นสุด format YYYY-MM-DD (default: วันนี้)",
-        },
-        pageSize: {
-          type: "number",
-          description: "จำนวนรายชื่อที่ต้องการ (default: 10, max: 20)",
+          enum: ["company_list", "company_ranking", "shipment_records"],
+          description: "ประเภทข้อมูล: company_list (รายชื่อ), company_ranking (จัดอันดับ), shipment_records (records ละเอียด)",
         },
       },
-      required: ["type", "catalog"],
-    },
-  },
-  {
-    name: "rank_trade_companies",
-    description:
-      "จัดอันดับ importer หรือ exporter ตามความถี่ shipment (tradeCount), มูลค่า, หรือปริมาณสินค้า — ใช้เมื่อ user ถามว่า 'ใครซื้อมากที่สุด', 'top importer คือใคร', 'rank ตามความถี่' — แพงกว่า list_trade_companies (12 points/item) แต่ได้ข้อมูลเชิงลึกต่อบริษัท",
-    input_schema: {
-      type: "object",
-      properties: {
-        type: {
-          type: "string",
-          enum: ["importers", "exporters"],
-          description: "ต้องการ rank importer หรือ exporter",
-        },
-        catalog: {
-          type: "string",
-          enum: ["imports", "exports"],
-          description: "ทิศทางการค้า: imports หรือ exports",
-        },
-        hsCode: {
-          type: "string",
-          description: "HS Code สินค้า เช่น '63049239'",
-        },
-        productDesc: {
-          type: "string",
-          description: "คำอธิบายสินค้าเป็นภาษาอังกฤษ คั่นหลายคำด้วย ';'",
-        },
-        countryOfOriginCode: {
-          type: "string",
-          description: "รหัสประเทศต้นทาง เช่น 'CHN', 'THA'",
-        },
-        countryOfDestinationCode: {
-          type: "string",
-          description: "รหัสประเทศปลายทาง เช่น 'USA', 'JPN'",
-        },
-        startDate: {
-          type: "string",
-          description: "วันเริ่มต้น format YYYY-MM-DD (default: 1 ปีก่อนหน้า)",
-        },
-        endDate: {
-          type: "string",
-          description: "วันสิ้นสุด format YYYY-MM-DD (default: วันนี้)",
-        },
-        pageSize: {
-          type: "number",
-          description: "จำนวนบริษัทที่ต้องการ (default: 10, max: 20) — แต่ละรายใช้ 12 points",
-        },
-      },
-      required: ["type", "catalog"],
+      required: ["skuTag"],
     },
   },
   {
@@ -300,43 +204,15 @@ export const toolDefinitions: Anthropic.Tool[] = [
     },
   },
   {
-    name: "query_trade_data",
-    description:
-      "ค้นหาข้อมูล import/export จาก Tendata ตาม HS Code, ชื่อบริษัท importer หรือ exporter ใช้เมื่อ user ถามเกี่ยวกับข้อมูลการค้าระหว่างประเทศ เช่น 'หา importer ของ HS Code นี้', 'บริษัทนี้ export ไปที่ไหนบ้าง' — แต่ละ record เสีย 6 points จาก quota ทดสอบ ใช้ pageSize เล็กถ้าไม่จำเป็น",
+    name: "rename_user_file",
+    description: "เปลี่ยนชื่อไฟล์ที่ user upload ไว้ในระบบ — ใช้เมื่อ user ต้องการเปลี่ยนชื่อไฟล์ เช่น เพิ่ม prefix หรือแก้ชื่อให้ถูกต้อง",
     input_schema: {
       type: "object",
       properties: {
-        catalog: {
-          type: "string",
-          enum: ["imports", "exports"],
-          description: "ทิศทางการค้า: imports หรือ exports",
-        },
-        hsCode: {
-          type: "string",
-          description: "HS Code สินค้า เช่น '63049239'",
-        },
-        importer: {
-          type: "string",
-          description: "ชื่อบริษัท importer (ใช้ภาษาอังกฤษ)",
-        },
-        exporter: {
-          type: "string",
-          description: "ชื่อบริษัท exporter (ใช้ภาษาอังกฤษ)",
-        },
-        startDate: {
-          type: "string",
-          description: "วันเริ่มต้น format YYYY-MM-DD (default: 1 ปีก่อนหน้า)",
-        },
-        endDate: {
-          type: "string",
-          description: "วันสิ้นสุด format YYYY-MM-DD (default: วันนี้)",
-        },
-        pageSize: {
-          type: "number",
-          description: "จำนวน records ที่ต้องการ (default: 10, max: 20)",
-        },
+        fileId: { type: "string", description: "ID ของไฟล์ที่ต้องการเปลี่ยนชื่อ (ได้จาก list_user_files)" },
+        newName: { type: "string", description: "ชื่อใหม่ของไฟล์ เช่น '01-shipment-Q1-2026.csv'" },
       },
-      required: ["catalog"],
+      required: ["fileId", "newName"],
     },
   },
   {
@@ -358,8 +234,41 @@ export const toolDefinitions: Anthropic.Tool[] = [
           type: "string",
           description: "วิธีแก้ปัญหาที่ใช้ได้จริง เขียนให้ชัดพอที่จะนำไปใช้ซ้ำได้เลย",
         },
+        tools: {
+          type: "array",
+          items: { type: "string" },
+          description: "ชื่อ tools ที่ควรใช้ใน context นี้ เช่น ['query_user_files', 'render_artifact'] — ถ้าไม่มีก็ไม่ต้องใส่",
+        },
       },
       required: ["name", "trigger", "solution"],
+    },
+  },
+  {
+    name: "query_attached_file",
+    description:
+      "Query หรือ filter ข้อมูลจากไฟล์ที่ user แนบมาในแชทนี้ (CSV/JSON/TXT) — ใช้เมื่อต้องการดูข้อมูลบางส่วน, filter แถว, หรือวิเคราะห์ข้อมูลจากไฟล์ชั่วคราว ข้อมูลจะอยู่เฉพาะใน session นี้ไม่บันทึก DB",
+    input_schema: {
+      type: "object",
+      properties: {
+        fileId: {
+          type: "string",
+          description: "ID ของไฟล์ที่แนบมา (ได้จาก system prompt ส่วน Attached Files)",
+        },
+        filter: {
+          type: "string",
+          description:
+            'เงื่อนไข filter เช่น "price > 500", "country = Thailand", "product contains steel", "status != done"',
+        },
+        limit: {
+          type: "number",
+          description: "จำนวน rows สูงสุดที่ return (default: 50)",
+        },
+        offset: {
+          type: "number",
+          description: "เริ่มจาก row ที่เท่าไหร่ สำหรับ pagination (default: 0)",
+        },
+      },
+      required: ["fileId"],
     },
   },
   {
@@ -382,6 +291,58 @@ export const toolDefinitions: Anthropic.Tool[] = [
         },
       },
       required: ["type", "title", "data"],
+    },
+  },
+]
+
+// ─── Local Folder Tools (Phase 3B — client-side execution, not yet in API call) ──
+// Requires client-side tool execution protocol before including in toolDefinitions.
+export const localFolderToolDefinitions: Anthropic.Tool[] = [
+  {
+    name: "list_folder_tree",
+    description:
+      "แสดงโครงสร้างไฟล์และโฟลเดอร์จาก Local Folder ที่ user เปิดไว้",
+    input_schema: {
+      type: "object",
+      properties: {
+        depth: { type: "number", description: "ความลึกสูงสุด (default: 2)" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "read_local_file",
+    description: "อ่านเนื้อหาไฟล์จาก Local Folder — รองรับ CSV, JSON, TXT",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "path ของไฟล์ เช่น 'data/shipments.csv'" },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "write_local_file",
+    description: "เขียนหรือสร้างไฟล์ใน Local Folder",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "path ของไฟล์ที่จะเขียน" },
+        content: { type: "string", description: "เนื้อหาที่จะเขียน" },
+      },
+      required: ["path", "content"],
+    },
+  },
+  {
+    name: "move_local_file",
+    description: "เปลี่ยนชื่อหรือย้ายไฟล์ใน Local Folder",
+    input_schema: {
+      type: "object",
+      properties: {
+        from: { type: "string", description: "path ต้นทาง" },
+        to: { type: "string", description: "path ปลายทาง" },
+      },
+      required: ["from", "to"],
     },
   },
 ]
