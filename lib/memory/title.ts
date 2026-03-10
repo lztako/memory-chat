@@ -19,4 +19,5 @@ export async function generateAndSaveTitle(conversationId: string, firstMessage:
     : firstMessage.slice(0, 40)
 
   await conversationRepo.updateTitle(conversationId, title)
+  return title
 }

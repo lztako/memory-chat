@@ -36,7 +36,7 @@ export const conversationRepo = {
     await prisma.$transaction([
       prisma.message.deleteMany({ where: { conversationId: id } }),
       prisma.conversationContext.deleteMany({ where: { conversationId: id } }),
-      prisma.conversation.delete({ where: { id } }),
+      prisma.conversation.deleteMany({ where: { id } }),
     ])
   },
 }

@@ -29,44 +29,43 @@ export function ArtifactPanel({ artifacts, currentIndex, onNavigate, onClose }: 
   if (!artifact) return null
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)" }}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b shrink-0">
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "10px 14px",
+        borderBottom: "1.5px solid var(--border)",
+        flexShrink: 0,
+      }}>
         {artifacts.length > 1 && (
           <>
             <button
               onClick={() => onNavigate(currentIndex - 1)}
               disabled={currentIndex === 0}
-              className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-lg leading-none"
-            >
-              ‹
-            </button>
-            <span className="text-xs text-gray-400 tabular-nums">
+              style={{ background: "none", border: "none", cursor: currentIndex === 0 ? "default" : "pointer", fontSize: 18, color: "var(--text3)", lineHeight: 1, padding: "0 2px", opacity: currentIndex === 0 ? 0.3 : 1 }}
+            >‹</button>
+            <span style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)", tabularNums: true } as React.CSSProperties}>
               {currentIndex + 1}/{artifacts.length}
             </span>
             <button
               onClick={() => onNavigate(currentIndex + 1)}
               disabled={currentIndex === artifacts.length - 1}
-              className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-lg leading-none"
-            >
-              ›
-            </button>
-            <div className="w-px h-4 bg-gray-200" />
+              style={{ background: "none", border: "none", cursor: currentIndex === artifacts.length - 1 ? "default" : "pointer", fontSize: 18, color: "var(--text3)", lineHeight: 1, padding: "0 2px", opacity: currentIndex === artifacts.length - 1 ? 0.3 : 1 }}
+            >›</button>
+            <div style={{ width: 1, height: 14, background: "var(--border)", margin: "0 2px" }} />
           </>
         )}
-        <h3 className="flex-1 font-medium text-sm text-gray-800 truncate">
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {artifact.title}
-        </h3>
+        </span>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-sm ml-2"
-        >
-          ✕
-        </button>
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--text3)", marginLeft: 4, lineHeight: 1 }}
+        >✕</button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
         {artifact.type === "chart_bar" && <BarChartView data={artifact.data} />}
         {artifact.type === "table" && <TableView data={artifact.data} />}
         {artifact.type === "markdown" && <MarkdownView data={artifact.data} />}
@@ -83,11 +82,11 @@ function BarChartView({ data }: { data: Record<string, unknown> }) {
   const chartData = items.map((item) => ({ name: item.label, value: item.value }))
 
   if (items.length === 0) {
-    return <p className="text-sm text-gray-400">ไม่มีข้อมูล</p>
+    return <p style={{ fontSize: 12, color: "var(--text3)" }}>ไม่มีข้อมูล</p>
   }
 
   return (
-    <div className="w-full">
+    <div style={{ width: "100%" }}>
       <ResponsiveContainer width="100%" height={Math.max(240, items.length * 36)}>
         <BarChart
           data={chartData}
@@ -96,7 +95,7 @@ function BarChartView({ data }: { data: Record<string, unknown> }) {
         >
           <XAxis
             type="number"
-            tick={{ fontSize: 11, fill: "#6b7280" }}
+            tick={{ fontSize: 11, fill: "var(--text3)" }}
             tickLine={false}
             axisLine={false}
           />
@@ -104,27 +103,28 @@ function BarChartView({ data }: { data: Record<string, unknown> }) {
             type="category"
             dataKey="name"
             width={160}
-            tick={{ fontSize: 11, fill: "#374151" }}
+            tick={{ fontSize: 11, fill: "var(--text2)" }}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip
-            formatter={(val) => [
-              `${Number(val).toLocaleString()} ${unit}`,
-              "",
-            ]}
+            formatter={(val) => [`${Number(val).toLocaleString()} ${unit}`, ""]}
             contentStyle={{
               fontSize: 12,
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              border: "1.5px solid var(--border)",
+              borderRadius: 6,
+              background: "var(--surface)",
+              color: "var(--text)",
+              boxShadow: "0 4px 12px rgba(42,40,37,.08)",
             }}
           />
-          <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={24} />
+          <Bar dataKey="value" fill="var(--accent)" radius={[0, 4, 4, 0]} maxBarSize={22} />
         </BarChart>
       </ResponsiveContainer>
       {unit && (
-        <p className="text-xs text-gray-400 text-right mt-1">unit: {unit}</p>
+        <p style={{ fontSize: 10, color: "var(--text3)", textAlign: "right", marginTop: 4, fontFamily: "var(--font-ibm-plex-mono), monospace" }}>
+          unit: {unit}
+        </p>
       )}
     </div>
   )
@@ -137,18 +137,24 @@ function TableView({ data }: { data: Record<string, unknown> }) {
   const rows = (data.rows as Array<Array<string | number>>) ?? []
 
   if (columns.length === 0) {
-    return <p className="text-sm text-gray-400">ไม่มีข้อมูล</p>
+    return <p style={{ fontSize: 12, color: "var(--text3)" }}>ไม่มีข้อมูล</p>
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse">
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
-          <tr className="border-b border-gray-200">
+          <tr style={{ borderBottom: "1.5px solid var(--border)" }}>
             {columns.map((col, i) => (
               <th
                 key={i}
-                className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
+                style={{
+                  textAlign: "left", padding: "6px 10px",
+                  fontSize: 9, fontWeight: 600,
+                  fontFamily: "var(--font-ibm-plex-mono), monospace",
+                  color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".06em",
+                  whiteSpace: "nowrap",
+                }}
               >
                 {col}
               </th>
@@ -157,14 +163,14 @@ function TableView({ data }: { data: Record<string, unknown> }) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr
-              key={i}
-              className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
-            >
+            <tr key={i} style={{ background: i % 2 === 0 ? "var(--bg)" : "var(--surface)" }}>
               {row.map((cell, j) => (
                 <td
                   key={j}
-                  className="py-2 px-3 text-gray-700 text-xs border-b border-gray-100"
+                  style={{
+                    padding: "6px 10px", color: "var(--text2)",
+                    fontSize: 11, borderBottom: "1px solid var(--border)",
+                  }}
                 >
                   {typeof cell === "number" ? cell.toLocaleString() : cell}
                 </td>
@@ -173,7 +179,9 @@ function TableView({ data }: { data: Record<string, unknown> }) {
           ))}
         </tbody>
       </table>
-      <p className="text-xs text-gray-400 mt-2 text-right">{rows.length} rows</p>
+      <p style={{ fontSize: 10, color: "var(--text3)", marginTop: 6, textAlign: "right", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>
+        {rows.length} rows
+      </p>
     </div>
   )
 }
@@ -183,7 +191,7 @@ function TableView({ data }: { data: Record<string, unknown> }) {
 function MarkdownView({ data }: { data: Record<string, unknown> }) {
   const content = (data.content as string) ?? ""
   return (
-    <div className="markdown-content text-sm text-gray-800">
+    <div className="markdown-content" style={{ fontSize: 13, color: "var(--text)" }}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
   )

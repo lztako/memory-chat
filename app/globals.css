@@ -1,59 +1,158 @@
 @import "tailwindcss";
 
+/* ─── Cowork Design Tokens ───────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg:       #f0ede8;
+  --surface:  #e8e4de;
+  --surface2: #ddd9d2;
+  --border:   #b8b2a8;
+  --border2:  #9a9490;
+  --text:     #2a2825;
+  --text2:    #6b6560;
+  --text3:    #9a9490;
+  --accent:   #2a2825;
+  --red:      #c0392b;
+  --blue:     #2c5f8a;
+  --green:    #2d6a4f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-mono: var(--font-ibm-plex-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ibm-plex-sans), Arial, sans-serif;
 }
 
-.markdown-content { font-size: 0.875rem; }
+/* ─── Sidebar Nav ────────────────────────────────────────────── */
+/* ─── New Chat Button ─────────────────────────────────────────── */
+.new-chat-btn-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 1.5px solid var(--border2);
+  border-radius: 7px;
+  font-family: var(--font-ibm-plex-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--bg);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.new-chat-btn-sidebar:hover { background: var(--surface2); border-color: var(--accent); }
+
+.folder-box-sidebar {
+  background: var(--surface2);
+  border: 1.5px dashed var(--border2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.folder-box-sidebar:hover { border-color: var(--accent); color: var(--accent); }
+
+.nav-item-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text2);
+  margin-bottom: 1px;
+  transition: background .1s, color .1s;
+}
+.nav-item-sidebar:hover { background: var(--surface2); color: var(--text); }
+
+
+.sidebar-conv-row {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 1px;
+}
+.sidebar-conv-link {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 5px;
+  font-size: 12px; color: var(--text2);
+  text-decoration: none;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  transition: background .1s, color .1s;
+}
+.sidebar-conv-link:hover { background: var(--surface2); color: var(--text); }
+.sidebar-conv-del { flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+.sidebar-conv-row:hover .sidebar-conv-del { opacity: 1; }
+.sidebar-conv-del-btn {
+  background: none; border: none; cursor: pointer;
+  padding: 2px 4px; font-size: 12px; color: var(--text3);
+}
+.sidebar-conv-del-btn:hover { color: var(--red); }
+
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── Markdown ───────────────────────────────────────────────── */
+.markdown-content { font-size: 0.8125rem; line-height: 1.6; color: var(--text); }
 .markdown-content h1, .markdown-content h2, .markdown-content h3,
 .markdown-content h4, .markdown-content h5, .markdown-content h6 {
   font-weight: 600; margin: 0.5em 0 0.25em;
 }
-.markdown-content h1 { font-size: 1.2em; }
-.markdown-content h2 { font-size: 1.1em; }
+.markdown-content h1 { font-size: 1.15em; }
+.markdown-content h2 { font-size: 1.05em; }
 .markdown-content h3 { font-size: 1em; }
 .markdown-content p { margin: 0.4em 0; }
 .markdown-content ul, .markdown-content ol { margin: 0.4em 0; padding-left: 1.4em; }
 .markdown-content li { margin: 0.15em 0; }
 .markdown-content code {
-  background: rgba(0,0,0,0.08); border-radius: 3px;
-  padding: 0.1em 0.35em; font-size: 0.85em; font-family: monospace;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+  font-family: var(--font-ibm-plex-mono), monospace;
 }
 .markdown-content pre {
-  background: rgba(0,0,0,0.08); border-radius: 6px;
-  padding: 0.75em 1em; overflow-x: auto; margin: 0.5em 0;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.5em 0;
 }
-.markdown-content pre code { background: none; padding: 0; }
+.markdown-content pre code { background: none; border: none; padding: 0; }
 .markdown-content blockquote {
-  border-left: 3px solid #aaa; margin: 0.4em 0;
-  padding-left: 0.75em; color: #555;
+  border-left: 3px solid var(--border2);
+  margin: 0.4em 0;
+  padding-left: 0.75em;
+  color: var(--text2);
 }
-.markdown-content a { color: #2563eb; text-decoration: underline; }
-.markdown-content strong { font-weight: 700; }
+.markdown-content a { color: var(--blue); text-decoration: underline; }
+.markdown-content strong { font-weight: 600; }
 .markdown-content em { font-style: italic; }
-.markdown-content table { border-collapse: collapse; margin: 0.5em 0; font-size: 0.85em; }
+.markdown-content table { border-collapse: collapse; margin: 0.5em 0; font-size: 0.85em; width: 100%; }
 .markdown-content th, .markdown-content td {
-  border: 1px solid #ccc; padding: 0.3em 0.6em;
+  border: 1px solid var(--border); padding: 0.3em 0.6em; text-align: left;
 }
-.markdown-content th { background: rgba(0,0,0,0.05); font-weight: 600; }
+.markdown-content th { background: var(--surface2); font-weight: 600; }
+.markdown-content hr { border: none; border-top: 1px solid var(--border); margin: 0.75em 0; }
+
+/* ─── Tool Call Badges ───────────────────────────────────────── */
+@keyframes tool-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.tool-call-dot-pending { animation: tool-pulse 1.2s ease-in-out infinite; }
