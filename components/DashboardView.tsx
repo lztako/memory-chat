@@ -298,7 +298,8 @@ function EmptyDashboard() {
 // ── Main Component ─────────────────────────────────────────────────
 export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
   const kpis = widgets.filter((w): w is ComputedKPI => w.type === "kpi")
-  const charts = widgets.filter((w) => w.type === "bar_chart" || w.type === "donut_chart")
+  const barCharts = widgets.filter((w) => w.type === "bar_chart")
+  const donuts = widgets.filter((w) => w.type === "donut_chart")
   const tables = widgets.filter((w): w is ComputedTable => w.type === "table")
 
   if (widgets.length === 0) {
@@ -364,19 +365,24 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
           </div>
         )}
 
-        {/* Charts row */}
-        {charts.length > 0 && (
+        {/* Bar charts — full width each */}
+        {barCharts.map((w) => (
+          <div key={w.id} style={{ marginBottom: 12 }}>
+            <BarChartWidget widget={w as ComputedBarChart} />
+          </div>
+        ))}
+
+        {/* Donut charts — 2 per row */}
+        {donuts.length > 0 && (
           <div style={{
             display: "grid",
-            gridTemplateColumns: charts.length === 1 ? "1fr" : "1fr 1fr",
+            gridTemplateColumns: donuts.length === 1 ? "1fr" : "1fr 1fr",
             gap: 12,
-            marginBottom: 16,
+            marginBottom: 12,
           }}>
-            {charts.map((w) => {
-              if (w.type === "bar_chart") return <BarChartWidget key={w.id} widget={w} />
-              if (w.type === "donut_chart") return <DonutWidget key={w.id} widget={w} />
-              return null
-            })}
+            {donuts.map((w) => (
+              <DonutWidget key={w.id} widget={w as ComputedDonut} />
+            ))}
           </div>
         )}
 
