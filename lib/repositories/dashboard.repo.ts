@@ -6,10 +6,12 @@ export const dashboardRepo = {
   },
 
   async upsert(userId: string, widgets: unknown[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = widgets as any
     return prisma.userDashboard.upsert({
       where: { userId },
-      update: { widgets },
-      create: { userId, widgets },
+      update: { widgets: w },
+      create: { userId, widgets: w },
     })
   },
 }
