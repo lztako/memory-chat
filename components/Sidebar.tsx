@@ -53,14 +53,6 @@ function IconBtn({
 
 const NAV_ITEMS = [
   {
-    href: "/chat/market", label: "Market",
-    icon: <><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></>,
-  },
-  {
-    href: "/chat/tasks", label: "Tasks",
-    icon: <><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>,
-  },
-  {
     href: "/chat/dashboard", label: "Dashboard",
     icon: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
   },
