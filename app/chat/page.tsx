@@ -2,62 +2,60 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
+// CHIPS defined inline below with icons
+
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12) return "Good morning."
+  if (h >= 12 && h < 18) return "Good afternoon."
+  return "Good evening."
+}
+
 export default function ChatListPage() {
   const router = useRouter()
+  const [greeting] = useState(getGreeting)
   const [value, setValue] = useState("")
   const [loading, setLoading] = useState(false)
-  const [focused, setFocused] = useState(false)
-  const [plusOpen, setPlusOpen] = useState(false)
   const [folderHandle, setFolderHandle] = useState<FileSystemDirectoryHandle | null>(null)
-  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null)
-
+  const [plusOpen, setPlusOpen] = useState(false)
+  const [stagedFile, setStagedFile] = useState<File | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const plusBtnRef = useRef<HTMLButtonElement>(null)
 
-  // Close popover on outside click
   useEffect(() => {
     if (!plusOpen) return
     const handler = (e: MouseEvent) => {
-      if (!plusBtnRef.current?.closest(".plus-wrap")?.contains(e.target as Node)) {
-        setPlusOpen(false)
-      }
+      if (!plusBtnRef.current?.closest(".plus-wrap-hero")?.contains(e.target as Node)) setPlusOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [plusOpen])
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const text = await file.text().catch(() => "")
-    setAttachedFile({ name: file.name, content: text })
-    setPlusOpen(false)
-    e.target.value = ""
-  }
-
-  const handleOpenFolder = async () => {
-    try {
-      const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" })
-      setFolderHandle(handle)
-      setPlusOpen(false)
-    } catch { /* cancelled */ }
-  }
-
   const startChat = async (prompt: string) => {
-    if (!prompt.trim() || loading) return
+    if ((!prompt.trim() && !stagedFile) || loading) return
     setLoading(true)
     const res = await fetch("/api/conversations", { method: "POST" }).catch(() => null)
     if (!res?.ok) { setLoading(false); return }
     const conv = await res.json().catch(() => null)
     if (!conv?.id) { setLoading(false); return }
 
-    const fullPrompt = attachedFile
-      ? `${prompt.trim()}\n\n[ไฟล์แนบ: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content.slice(0, 8000)}\n\`\`\``
-      : prompt.trim()
+    if (prompt.trim()) sessionStorage.setItem(`chip_prompt_${conv.id}`, prompt.trim())
 
-    sessionStorage.setItem(`chip_prompt_${conv.id}`, fullPrompt)
+    // Upload staged file ถ้ามี
+    if (stagedFile) {
+      try {
+        const formData = new FormData()
+        formData.append("file", stagedFile)
+        formData.append("conversationId", conv.id)
+        const attachRes = await fetch("/api/files/attach", { method: "POST", body: formData })
+        if (attachRes.ok) {
+          const attachment = await attachRes.json()
+          sessionStorage.setItem(`staged_files_${conv.id}`, JSON.stringify([attachment]))
+        }
+      } catch { /* ignore */ }
+    }
 
-    // Save folder handle to IndexedDB so [id]/page.tsx can restore it
     if (folderHandle) {
       try {
         await new Promise<void>((resolve) => {
@@ -67,14 +65,12 @@ export default function ChatListPage() {
             const db = req.result
             const tx = db.transaction("handles", "readwrite")
             tx.objectStore("handles").put(folderHandle, conv.id)
-            tx.oncomplete = () => resolve()
-            tx.onerror = () => resolve()
+            tx.oncomplete = () => resolve(); tx.onerror = () => resolve()
           }
           req.onerror = () => resolve()
         })
       } catch { /* ignore */ }
     }
-
     router.push(`/chat/${conv.id}`)
   }
 
@@ -82,248 +78,203 @@ export default function ChatListPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startChat(value) }
   }
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value)
+    e.target.style.height = "auto"
+    e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"
+  }
+
+  const handleOpenFolder = async () => {
+    setPlusOpen(false)
+    try {
+      const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" })
+      setFolderHandle(handle)
+    } catch { /* cancelled */ }
+  }
+
+  const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    setPlusOpen(false)
+    setStagedFile(file)
+    // focus textarea ให้ user พิมพ์ต่อได้เลย
+    setTimeout(() => textareaRef.current?.focus(), 50)
+  }
+
   return (
     <>
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(14px); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes heroIn {
+          from { opacity: 0; transform: translateY(16px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .hero-icon    { animation: heroIn .5s ease both; animation-delay: .0s; }
+        .hero-title   { animation: heroIn .5s ease both; animation-delay: .08s; }
+        .hero-input   { animation: heroIn .5s ease both; animation-delay: .16s; }
+        .hero-chips   { animation: heroIn .5s ease both; animation-delay: .26s; }
 
-        .chat-hero-badge   { animation: fadeUp .45s ease both; animation-delay: .05s; }
-        .chat-hero-heading { animation: fadeUp .45s ease both; animation-delay: .15s; }
-        .chat-hero-sub     { animation: fadeUp .45s ease both; animation-delay: .22s; }
-        .chat-hero-input   { animation: fadeUp .45s ease both; animation-delay: .30s; }
-
-        .hero-input-wrap { transition: box-shadow .2s, border-color .2s; }
-        .hero-input-wrap.focused {
-          box-shadow: 0 0 0 3px rgba(42,40,37,.09);
-          border-color: var(--accent) !important;
+        .hero-card {
+          border-radius: 20px;
+          background: var(--surface2);
+          box-shadow: 0 0 0 1px var(--border), 0 8px 40px rgba(0,0,0,.35);
+          transition: box-shadow .2s;
+        }
+        .hero-card:focus-within {
+          box-shadow: 0 0 0 1.5px var(--border2), 0 8px 40px rgba(0,0,0,.4);
         }
 
-        .send-btn { transition: background .15s, transform .1s; }
-        .send-btn:not(:disabled):hover  { transform: scale(1.06); }
-        .send-btn:not(:disabled):active { transform: scale(.96); }
-
-        .plus-btn {
-          width: 28px; height: 28px; border-radius: 6px;
-          border: 1.5px solid var(--border);
-          background: none; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          color: var(--text3);
-          transition: border-color .12s, color .12s, background .12s;
-          flex-shrink: 0;
+        .chip-pill {
+          padding: 6px 14px;
+          border: 1px solid var(--border2);
+          border-radius: 20px;
+          font-size: 11.5px;
+          font-family: var(--font-ibm-plex-sans), sans-serif;
+          color: var(--text2);
+          background: transparent;
+          cursor: pointer;
+          transition: border-color .15s, color .15s, background .12s;
+          white-space: nowrap;
         }
-        .plus-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .plus-btn.active { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+        .chip-pill:hover { border-color: var(--text3); color: var(--text); background: var(--surface2); }
+        .chip-pill:disabled { opacity: .4; cursor: default; }
 
-        .plus-menu-item {
+        .plus-menu-row {
           display: flex; align-items: center; gap: 9px;
           padding: 9px 12px; font-size: 12px;
           color: var(--text2); cursor: pointer;
           transition: background .1s, color .1s;
           font-family: var(--font-ibm-plex-sans), sans-serif;
         }
-        .plus-menu-item:hover { background: var(--surface2); color: var(--text); }
-
-        .folder-badge {
-          display: inline-flex; align-items: center; gap: 7px;
-          padding: 5px 10px;
-          background: var(--surface2);
-          border: 1.5px dashed var(--border2);
-          border-radius: 7px;
-          font-size: 11px; color: var(--text2);
-          font-family: var(--font-ibm-plex-sans), sans-serif;
-          margin-bottom: 8px;
-        }
-        .badge-remove {
-          width: 16px; height: 16px; border-radius: 4px;
-          border: none; background: none; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          color: var(--text3); padding: 0;
-          transition: color .1s;
-        }
-        .badge-remove:hover { color: var(--red); }
+        .plus-menu-row:hover { background: var(--surface); color: var(--text); }
       `}</style>
 
+      {/* Full-height centered layout — NO topbar */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: "0 40px 60px",
-        background: "var(--bg)", position: "relative", overflow: "hidden",
+        padding: "0 24px 48px",
+        background: "var(--bg)", overflow: "hidden",
       }}>
+        <div style={{ width: "100%", maxWidth: 720, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
 
-        {/* Dot-grid */}
-        <svg aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: .4 }} xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-              <circle cx="1.5" cy="1.5" r="1" fill="var(--border)" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#dots)" />
-        </svg>
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 40%, var(--bg) 100%)" }} />
-
-        {/* Content */}
-        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 600, display: "flex", flexDirection: "column", alignItems: "center" }}>
-
-          {/* Badge */}
-          <div className="chat-hero-badge" style={{
-            display: "inline-flex", alignItems: "center", gap: 7,
-            padding: "5px 12px", background: "var(--surface)",
-            border: "1.5px solid var(--border2)", borderRadius: 20, marginBottom: 28,
-          }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2">
-              <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
-            </svg>
-            <span style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--text3)" }}>
-              Origo Intelligence
-            </span>
-          </div>
-
-          {/* Heading */}
-          <h1 className="chat-hero-heading" style={{
-            margin: "0 0 10px", fontSize: 38, fontWeight: 700,
+          <h1 className="hero-title" style={{
+            margin: "0 0 28px", fontSize: 40, fontWeight: 700,
             color: "var(--text)", letterSpacing: "-.03em",
             fontFamily: "var(--font-ibm-plex-sans), sans-serif",
-            textAlign: "center", lineHeight: 1.15,
+            textAlign: "center", lineHeight: 1.1,
           }}>
-            สวัสดีครับ
+            {greeting}
           </h1>
 
-          <p className="chat-hero-sub" style={{
-            margin: "0 0 32px", fontSize: 13, color: "var(--text3)",
-            fontFamily: "var(--font-ibm-plex-mono), monospace",
-            letterSpacing: ".02em", textAlign: "center",
-          }}>
-            ถามอะไรก็ได้เกี่ยวกับการค้าระหว่างประเทศ
-          </p>
+          {/* Input card */}
+          <div className="hero-card hero-input" style={{ width: "100%" }}>
 
-          {/* Folder / file badge above input */}
-          {(folderHandle || attachedFile) && (
-            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 4, marginBottom: 0 }}>
-              {folderHandle && (
-                <div className="folder-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            {/* Staged file badge */}
+            {stagedFile && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 16px 0" }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "3px 8px 3px 9px",
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: 5, fontSize: 11, color: "var(--text2)",
+                  fontFamily: "var(--font-ibm-plex-mono), monospace",
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  {stagedFile.name}
+                  <button
+                    onClick={() => setStagedFile(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 12, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                  >×</button>
+                </div>
+              </div>
+            )}
+
+            {/* Folder badge */}
+            {folderHandle && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "10px 16px 0",
+              }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "3px 10px", background: "var(--surface)",
+                  border: "1px solid var(--border)", borderRadius: 6,
+                  fontSize: 11, color: "var(--text2)",
+                  fontFamily: "var(--font-ibm-plex-mono), monospace",
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                   </svg>
-                  <span style={{ flex: 1 }}>{folderHandle.name}</span>
-                  <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)" }}>AI can edit</span>
-                  <button className="badge-remove" onClick={() => setFolderHandle(null)} title="Remove">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
+                  {folderHandle.name}
+                  <span style={{ color: "var(--green)", fontSize: 9 }}>AI can edit</span>
+                  <button onClick={() => setFolderHandle(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", padding: 0, fontSize: 13, lineHeight: 1 }}>×</button>
                 </div>
-              )}
-              {attachedFile && (
-                <div className="folder-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                  <span style={{ flex: 1 }}>{attachedFile.name}</span>
-                  <button className="badge-remove" onClick={() => setAttachedFile(null)} title="Remove">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Input box */}
-          <div
-            className={`hero-input-wrap chat-hero-input${focused ? " focused" : ""}`}
-            style={{
-              width: "100%", border: "1.5px solid var(--border2)", borderRadius: 14,
-              background: "var(--surface)",
-              marginTop: (folderHandle || attachedFile) ? 8 : 0,
-            }}
-          >
             {/* Textarea */}
-            <div style={{ padding: "16px 16px 12px", display: "flex", alignItems: "flex-end", gap: 10 }}>
+            <div style={{ padding: "16px 18px 4px" }}>
               <textarea
+                ref={textareaRef}
                 rows={2}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                placeholder="พิมพ์คำถามของคุณที่นี่…"
+                placeholder="How can I help you today?"
                 disabled={loading}
                 style={{
-                  flex: 1, border: "none", background: "transparent",
+                  width: "100%", border: "none", background: "transparent",
                   fontFamily: "var(--font-ibm-plex-sans), sans-serif",
-                  fontSize: 14, color: "var(--text)", outline: "none",
-                  resize: "none", minHeight: 44, lineHeight: 1.6,
+                  fontSize: 15, color: "var(--text)", outline: "none",
+                  resize: "none", minHeight: 48, maxHeight: 160, lineHeight: 1.6,
+                  boxSizing: "border-box",
                 }}
               />
-              <button
-                className="send-btn"
-                onClick={() => startChat(value)}
-                disabled={!value.trim() || loading}
-                style={{
-                  width: 36, height: 36, flexShrink: 0,
-                  background: value.trim() && !loading ? "var(--accent)" : "var(--surface2)",
-                  border: "none", borderRadius: 9,
-                  cursor: value.trim() && !loading ? "pointer" : "default",
-                  color: value.trim() && !loading ? "var(--bg)" : "var(--text3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
-                {loading ? (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
-                  </svg>
-                )}
-              </button>
             </div>
 
             {/* Bottom bar */}
-            <div style={{
-              padding: "6px 12px 10px", borderTop: "1px solid var(--border)",
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileChange} />
+            <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+              <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileAttach} />
 
               {/* + popover */}
-              <div className="plus-wrap" style={{ position: "relative" }}>
+              <div className="plus-wrap-hero" style={{ position: "relative" }}>
                 <button
                   ref={plusBtnRef}
-                  className={`plus-btn${plusOpen ? " active" : ""}`}
                   onClick={() => setPlusOpen(o => !o)}
                   disabled={loading}
-                  title="Attach or connect"
+                  style={{
+                    width: 32, height: 32, borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--text3)", transition: "border-color .12s, color .12s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border2)"; e.currentTarget.style.color = "var(--text2)" }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text3)" }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
                 </button>
 
                 {plusOpen && (
                   <div style={{
-                    position: "absolute", bottom: 36, left: 0,
-                    background: "var(--surface)", border: "1.5px solid var(--border2)",
-                    borderRadius: 8, overflow: "hidden", minWidth: 168,
-                    boxShadow: "0 6px 20px rgba(42,40,37,.12)", zIndex: 100,
+                    position: "absolute", bottom: 40, left: 0,
+                    background: "var(--surface)", border: "1px solid var(--border2)",
+                    borderRadius: 10, overflow: "hidden", minWidth: 172,
+                    boxShadow: "0 8px 32px rgba(0,0,0,.4)", zIndex: 100,
                   }}>
-                    <div className="plus-menu-item" onClick={() => { fileInputRef.current?.click(); setPlusOpen(false) }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                      </svg>
+                    <div className="plus-menu-row" onClick={() => { fileInputRef.current?.click(); setPlusOpen(false) }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                       Attach file
                     </div>
                     <div style={{ height: 1, background: "var(--border)" }} />
-                    <div className="plus-menu-item" onClick={handleOpenFolder}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                      </svg>
+                    <div className="plus-menu-row" onClick={handleOpenFolder}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
                       <div>
                         <div>{folderHandle ? "Change folder" : "Open folder"}</div>
                         <div style={{ fontSize: 9, color: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>AI can edit files</div>
@@ -333,11 +284,40 @@ export default function ChatListPage() {
                 )}
               </div>
 
-              <span style={{ marginLeft: "auto", fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)" }}>
-                Sonnet 4.6 · ⏎ send
-              </span>
+              {/* Sonnet label */}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 12, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)" }}>
+                  Sonnet 4.6
+                </span>
+                {/* Send button */}
+                <button
+                  onClick={() => startChat(value)}
+                  disabled={(!value.trim() && !stagedFile) || loading}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8,
+                    background: (value.trim() || stagedFile) && !loading ? "var(--accent)" : "var(--surface)",
+                    border: "1px solid " + ((value.trim() || stagedFile) && !loading ? "transparent" : "var(--border)"),
+                    cursor: (value.trim() || stagedFile) && !loading ? "pointer" : "default",
+                    color: (value.trim() || stagedFile) && !loading ? "var(--bg)" : "var(--text3)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "background .15s",
+                    flexShrink: 0,
+                  }}
+                >
+                  {loading ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
+
 
         </div>
       </div>

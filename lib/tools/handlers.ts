@@ -1,3 +1,5 @@
+import Anthropic from "@anthropic-ai/sdk"
+import { anthropic } from "@/lib/claude"
 import { memoryRepo } from "@/lib/repositories/memory.repo"
 import { queryAttachedFile } from "@/lib/session/attached-files"
 import { contextRepo } from "@/lib/repositories/context.repo"
@@ -5,6 +7,9 @@ import { fileRepo } from "@/lib/repositories/file.repo"
 import { taskRepo } from "@/lib/repositories/task.repo"
 import { skillRepo } from "@/lib/repositories/skill.repo"
 import { tradeDataRepo } from "@/lib/repositories/trade-data.repo"
+import { agentRepo } from "@/lib/repositories/agent.repo"
+import { toolDefinitions } from "@/lib/tools/definitions"
+import { recordTokenUsage } from "@/lib/ai/token-usage"
 import { Prisma } from "@prisma/client"
 
 export async function executeToolCall(
@@ -196,6 +201,81 @@ export async function executeToolCall(
         type: toolInput.type as string,
         title: toolInput.title as string,
         data: toolInput.data as Record<string, unknown>,
+      }
+    }
+
+    case "use_agent": {
+      const agentName = toolInput.agentName as string
+      const task = toolInput.task as string
+      const context = toolInput.context as string | undefined
+
+      // 1. หา agent จาก DB (global หรือ per-user)
+      const agent = await agentRepo.getByName(agentName, userId)
+      if (!agent || !agent.isActive) {
+        return { error: `Agent "${agentName}" ไม่พบหรือ inactive — agents ที่มี: Trade Data Analyst, File Processor, Task Manager` }
+      }
+
+      // 2. กรอง tools เฉพาะที่ agent นี้ใช้ได้
+      const agentTools = toolDefinitions.filter(t => agent.tools.includes(t.name))
+
+      // 3. สร้าง isolated message thread
+      const agentMessages: Anthropic.MessageParam[] = [
+        { role: "user", content: context ? `${task}\n\nContext: ${context}` : task },
+      ]
+
+      let result = ""
+      const MAX_AGENT_ITERATIONS = 5
+
+      for (let i = 0; i < MAX_AGENT_ITERATIONS; i++) {
+        const response = await anthropic.messages.create({
+          model: agent.model,
+          max_tokens: 1024,
+          system: agent.systemPrompt,
+          messages: agentMessages,
+          ...(agentTools.length > 0 && {
+            tools: agentTools,
+            tool_choice: { type: "auto" },
+          }),
+        })
+
+        recordTokenUsage(userId, response.usage.input_tokens, response.usage.output_tokens)
+
+        if (response.stop_reason === "end_turn") {
+          result = response.content
+            .filter((b): b is Anthropic.TextBlock => b.type === "text")
+            .map(b => b.text)
+            .join("")
+          break
+        }
+
+        if (response.stop_reason === "tool_use") {
+          agentMessages.push({ role: "assistant", content: response.content })
+
+          const toolResults: Anthropic.ToolResultBlockParam[] = []
+          for (const block of response.content) {
+            if (block.type !== "tool_use") continue
+            const toolResult = await executeToolCall(
+              block.name,
+              block.input as Record<string, unknown>,
+              conversationId,
+              userId
+            )
+            // ถ้า sub-agent render artifact ให้ unwrap แล้วส่งเป็น text แทน
+            const r = toolResult as Record<string, unknown>
+            const content = r.__isArtifact
+              ? JSON.stringify({ success: true, artifactRendered: true, ...r })
+              : JSON.stringify(toolResult)
+            toolResults.push({ type: "tool_result", tool_use_id: block.id, content })
+          }
+          agentMessages.push({ role: "user", content: toolResults })
+        } else {
+          break
+        }
+      }
+
+      return {
+        agent: agentName,
+        result: result || `Agent "${agentName}" ไม่ส่งผลลัพธ์กลับมา`,
       }
     }
 

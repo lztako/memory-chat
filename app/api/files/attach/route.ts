@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { storeAttachedFile } from "@/lib/session/attached-files"
 import Papa from "papaparse"
 import { randomUUID } from "crypto"
+import { parseXlsx } from "@/lib/parsers/xlsx"
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -19,12 +20,50 @@ export async function POST(req: Request) {
   const fileName = file.name
   const ext = fileName.split(".").pop()?.toLowerCase() ?? ""
 
-  if (!["csv", "txt", "json"].includes(ext)) {
+  if (!["csv", "txt", "json", "xlsx", "xls"].includes(ext)) {
     return Response.json(
-      { error: "รองรับเฉพาะ CSV, TXT, JSON — Image จะถูกส่งโดยตรงในข้อความ" },
+      { error: "รองรับเฉพาะ CSV, TXT, JSON, XLSX — Image จะถูกส่งโดยตรงในข้อความ" },
       { status: 400 }
     )
   }
+
+  // ── xlsx / xls path ─────────────────────────────────────────────
+  if (ext === "xlsx" || ext === "xls") {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    let parsed
+    try {
+      parsed = parseXlsx(buffer, 200)
+    } catch (err) {
+      return Response.json(
+        { error: err instanceof Error ? err.message : "parse xlsx error" },
+        { status: 400 }
+      )
+    }
+    const id = randomUUID()
+    const sheets = parsed.sheets.map((s) => ({
+      name: s.name,
+      rowCount: s.rows.length,
+      columns: s.columns,
+    }))
+    storeAttachedFile(conversationId, {
+      id,
+      fileName,
+      fileType: "xlsx",
+      columns: parsed.primary.columns,
+      data: parsed.primary.rows,
+      rowCount: parsed.primary.rows.length,
+      sheets,
+    })
+    return Response.json({
+      id,
+      fileName,
+      fileType: "xlsx",
+      columns: parsed.primary.columns,
+      rowCount: parsed.primary.rows.length,
+      sheetCount: parsed.sheets.length,
+    })
+  }
+  // ────────────────────────────────────────────────────────────────
 
   const text = await file.text()
   const id = randomUUID()

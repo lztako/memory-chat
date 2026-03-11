@@ -50,6 +50,15 @@ export const taskRepo = {
     return prisma.task.findFirst({ where: { id, userId } })
   },
 
+  async listActive(userId: string) {
+    return prisma.task.findMany({
+      where: { userId, status: { notIn: ["done", "cancelled"] } },
+      select: { id: true, title: true, status: true, priority: true, dueDate: true, linkedCompany: true },
+      orderBy: [{ priority: "desc" }, { dueDate: "asc" }, { createdAt: "asc" }],
+      take: 20,
+    })
+  },
+
   async getReminders(userId: string) {
     const in24h = new Date(Date.now() + 24 * 60 * 60 * 1000)
     return prisma.task.findMany({

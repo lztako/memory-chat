@@ -131,6 +131,37 @@ export const memoryRepo = {
     importance: number
     layer?: string
   }) {
+    // Deduplication: skip for user_config (managed by key-based upsert elsewhere)
+    if (data.type !== "user_config") {
+      const embedding = await embedText(data.content)
+      if (embedding) {
+        const vec = toVectorString(embedding)
+        const layer = data.layer ?? "long_term"
+        const similar = await prisma.$queryRaw<{ id: string; importance: number }[]>`
+          SELECT id, importance
+          FROM "Memory"
+          WHERE "userId" = ${data.userId}
+            AND layer = ${layer}
+            AND type != 'user_config'
+            AND embedding IS NOT NULL
+            AND embedding <=> ${vec}::vector < 0.15
+          ORDER BY embedding <=> ${vec}::vector
+          LIMIT 1
+        `
+        if (similar.length > 0) {
+          // Update existing memory instead of creating duplicate
+          return this.update(similar[0].id, {
+            content: data.content,
+            importance: Math.max(similar[0].importance, data.importance),
+          })
+        }
+        // No duplicate — create and save embedding synchronously (already computed)
+        const memory = await prisma.memory.create({ data })
+        const v = toVectorString(embedding)
+        prisma.$executeRaw`UPDATE "Memory" SET embedding = ${v}::vector WHERE id = ${memory.id}`.catch(() => {})
+        return memory
+      }
+    }
     const memory = await prisma.memory.create({ data })
     embedAndSaveMemory(memory.id, data.content).catch(() => {})
     return memory

@@ -34,6 +34,7 @@ interface Props {
   attachedFiles?: string[]   // DB files — permanent badges (right panel uploads)
   recentContext?: string
   conversationId: string
+  initialTextAttachments?: object[]  // staged from empty-state attach
 }
 
 // ── Folder helpers (browser FileSystem API) ─────────────────────────────────
@@ -145,10 +146,20 @@ async function moveFolderFile(handle: FileSystemDirectoryHandle, from: string, t
 
 export { writeFolderFile, moveFolderFile }
 
-export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle, onFolderOpen, folderReconnectName, attachedFiles = [], recentContext = "", conversationId }: Props) {
+export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle, onFolderOpen, folderReconnectName, attachedFiles = [], recentContext = "", conversationId, initialTextAttachments = [] }: Props) {
   const [value, setValue] = useState("")
   const [isUploading, setIsUploading] = useState(false)
-  const [textAttachments, setTextAttachments] = useState<TextAttachment[]>([])
+  const [textAttachments, setTextAttachments] = useState<TextAttachment[]>(
+    initialTextAttachments as TextAttachment[]
+  )
+
+  // Sync when parent loads staged attachments async (empty-state → chat page handoff)
+  useEffect(() => {
+    if (initialTextAttachments.length > 0) {
+      setTextAttachments(initialTextAttachments as TextAttachment[])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTextAttachments.length])
   const [imageAttachments, setImageAttachments] = useState<ImageAttachment[]>([])
   const [skills, setSkills] = useState<Skill[]>([])
   const [slashOpen, setSlashOpen] = useState(false)
@@ -250,7 +261,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
       return
     }
 
-    if (!["csv", "txt", "json"].includes(ext)) return
+    if (!["csv", "txt", "json", "xlsx", "xls"].includes(ext)) return
 
     setIsUploading(true)
     try {
@@ -283,7 +294,9 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
   }
 
   return (
-    <div style={{ padding: "12px 32px 16px", borderTop: "1.5px solid var(--border)", background: "var(--bg)", flexShrink: 0, position: "relative" }}>
+    <div style={{ padding: "0 24px 24px", background: "var(--bg)", flexShrink: 0, position: "relative" }}>
+      {/* Gradient fade */}
+      <div style={{ position: "absolute", top: -60, left: 0, right: 0, height: 60, background: "linear-gradient(to bottom, transparent, var(--bg))", pointerEvents: "none" }} />
 
       {/* ── Slash Command Dropdown ── */}
       {slashOpen && filteredSkills.length > 0 && (
@@ -316,8 +329,8 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
         </div>
       )}
 
-      {/* ── Chat Attachments (ephemeral) ── */}
-      {(textAttachments.length > 0 || imageAttachments.length > 0) && (
+      {/* ── Chat Attachments (ephemeral) — moved inside Input Box below ── */}
+      {false && (textAttachments.length > 0 || imageAttachments.length > 0) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
           {textAttachments.map((f) => (
             <div key={f.id} style={{
@@ -423,14 +436,61 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
 
       {/* ── Input Box ── */}
       <div style={{
-        border: "1.5px solid var(--border2)",
-        borderRadius: 10,
-        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 20,
+        background: "var(--surface2)",
         overflow: "visible",
+        boxShadow: "0 4px 32px rgba(0,0,0,.35)",
+        transition: "border-color .2s, box-shadow .2s",
+        maxWidth: 760,
+        margin: "0 auto",
       }}
-        onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)" }}
-        onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border2)" }}
+        onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border2)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 40px rgba(0,0,0,.45)" }}
+        onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 32px rgba(0,0,0,.35)" }}
       >
+        {/* ── Attachments inside card ── */}
+        {(textAttachments.length > 0 || imageAttachments.length > 0) && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 14px 0" }}>
+            {textAttachments.map((f) => (
+              <div key={f.id} style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "3px 8px 3px 9px",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: 6, fontSize: 11, color: "var(--text2)",
+                fontFamily: "var(--font-ibm-plex-mono), monospace",
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                </svg>
+                {f.fileName}
+                {f.rowCount != null && <span style={{ color: "var(--text3)" }}>{f.rowCount}r</span>}
+                <button
+                  onClick={() => setTextAttachments((prev) => prev.filter((x) => x.id !== f.id))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 12, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                >×</button>
+              </div>
+            ))}
+            {imageAttachments.map((img, i) => (
+              <div key={i} style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "3px 8px 3px 9px",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: 6, fontSize: 11, color: "var(--text2)",
+                fontFamily: "var(--font-ibm-plex-mono), monospace",
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                </svg>
+                {img.name}
+                <button
+                  onClick={() => setImageAttachments((prev) => prev.filter((_, j) => j !== i))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 12, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Textarea + Send */}
         <div style={{ display: "flex", alignItems: "flex-end", padding: "12px 14px", gap: 10 }}>
           <textarea
@@ -438,7 +498,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
             value={value}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={isUploading ? "Uploading..." : "พิมพ์ข้อความ หรือ / สำหรับ skills..."}
+            placeholder={isUploading ? "Uploading..." : "Reply..."}
             disabled={isStreaming ? false : disabled}
             rows={1}
             style={{
@@ -453,11 +513,15 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
               onClick={onStop}
               style={{
                 width: 32, height: 32, flexShrink: 0,
-                background: "var(--red)", border: "none", borderRadius: 6,
-                cursor: "pointer", color: "var(--bg)", fontSize: 12, fontWeight: 600,
+                background: "var(--accent)", border: "none", borderRadius: 8,
+                cursor: "pointer", color: "var(--bg)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
-            >■</button>
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <rect x="2" y="2" width="8" height="8" rx="1.5"/>
+              </svg>
+            </button>
           ) : (
             <button
               onClick={doSend}
@@ -465,20 +529,23 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
               style={{
                 width: 32, height: 32, flexShrink: 0,
                 background: value.trim() ? "var(--accent)" : "var(--surface2)",
-                border: "none", borderRadius: 6,
+                border: "none", borderRadius: 8,
                 cursor: value.trim() ? "pointer" : "default",
                 color: value.trim() ? "var(--bg)" : "var(--text3)",
-                fontSize: 16,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background .15s",
               }}
-            >↑</button>
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+              </svg>
+            </button>
           )}
         </div>
 
         {/* Bottom bar: + button + hint */}
         <div style={{ padding: "6px 12px 10px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
-          <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileChange} />
+          <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileChange} />
 
           {/* + popover */}
           <div className="plus-popover-wrap" style={{ position: "relative" }}>
@@ -540,7 +607,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
           </div>
 
           <span style={{ marginLeft: "auto", fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)" }}>
-            / for skills · ⏎ send
+            claude sonnet 4.6
           </span>
         </div>
       </div>

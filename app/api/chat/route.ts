@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma"
 import { recordTokenUsage } from "@/lib/ai/token-usage"
 import { taskRepo } from "@/lib/repositories/task.repo"
 import { skillRepo } from "@/lib/repositories/skill.repo"
+import { fileRepo } from "@/lib/repositories/file.repo"
 import { getAttachedFiles } from "@/lib/session/attached-files"
 
 export async function POST(req: Request) {
@@ -39,11 +40,13 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Conversation not found" }), { status: 404 })
   }
 
-  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks, skills] = await Promise.all([
+  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks, skills, userFiles, activeTasks] = await Promise.all([
     memoryRepo.getForInjectionSemantic(USER_ID, message),
     conversationRepo.getMessages(conversationId),
     taskRepo.getReminders(USER_ID),
     skillRepo.listByUserSemantic(USER_ID, message),
+    fileRepo.listSummaryByUser(USER_ID),
+    taskRepo.listActive(USER_ID),
   ])
 
   const attachedFiles = getAttachedFiles(conversationId)
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
     content: message,
   })
 
-  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks, userConfig, skills, message, attachedFiles, true)
+  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks, userConfig, skills, message, attachedFiles, true, userFiles, activeTasks)
 
   // Build enriched user message — append folder context if available
   let enrichedMessage = message
@@ -109,6 +112,25 @@ export async function POST(req: Request) {
 
       const MAX_TOOL_ITERATIONS = 10
       let toolIterations = 0
+
+      // ── Mock mode (MOCK_AI=true in .env.local) ──────────────────
+      if (process.env.MOCK_AI === "true") {
+        await new Promise(r => setTimeout(r, 800))
+        controller.enqueue(sse("tool_start", { id: "mock-1", name: "query_user_file" }))
+        await new Promise(r => setTimeout(r, 1200))
+        controller.enqueue(sse("tool_done", { id: "mock-1" }))
+        await new Promise(r => setTimeout(r, 300))
+        const mockText = `นี่คือผลลัพธ์จาก mock mode ครับ\n\nระบบกำลังทดสอบ UI โดยไม่เรียก Claude API\n\n**ข้อมูลทดสอบ:**\n- รายการ 1: White Sugar 45 ICUMSA\n- รายการ 2: Raw Sugar 600 ICUMSA\n- รายการ 3: Brown Sugar\n\nสามารถทดสอบ streaming, tool badges, และ markdown rendering ได้ครับ`
+        for (const char of mockText) {
+          controller.enqueue(sse("text", char))
+          await new Promise(r => setTimeout(r, 18))
+        }
+        fullResponse = mockText
+        await conversationRepo.addMessage({ conversationId, role: "assistant", content: fullResponse })
+        controller.close()
+        return
+      }
+      // ────────────────────────────────────────────────────────────
 
       try {
         while (true) {

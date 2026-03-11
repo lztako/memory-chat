@@ -1,19 +1,20 @@
 @import "tailwindcss";
 
-/* ─── Cowork Design Tokens ───────────────────────────────────── */
+/* ─── Design Tokens — Dark Theme ─────────────────────────────── */
 :root {
-  --bg:       #f0ede8;
-  --surface:  #e8e4de;
-  --surface2: #ddd9d2;
-  --border:   #b8b2a8;
-  --border2:  #9a9490;
-  --text:     #2a2825;
-  --text2:    #6b6560;
-  --text3:    #9a9490;
-  --accent:   #2a2825;
-  --red:      #c0392b;
-  --blue:     #2c5f8a;
-  --green:    #2d6a4f;
+  --bg:       #1a1918;
+  --surface:  #222120;
+  --surface2: #2e2c2a;
+  --border:   #333130;
+  --border2:  #404040;
+  --text:     #e8e4de;
+  --text2:    #9a9490;
+  --text3:    #6b6560;
+  --accent:   #e8e4de;
+  --red:      #d94f3d;
+  --blue:     #5a8fba;
+  --green:    #4a9a6a;
+  --orange:   #e8826a;
 }
 
 @theme inline {
@@ -29,6 +30,12 @@ body {
   font-family: var(--font-ibm-plex-sans), Arial, sans-serif;
 }
 
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
 /* ─── Sidebar Nav ────────────────────────────────────────────── */
 /* ─── New Chat Button ─────────────────────────────────────────── */
 .new-chat-btn-sidebar {
@@ -36,18 +43,19 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 7px 12px;
-  border: 1.5px solid var(--border2);
+  padding: 7px 10px;
+  border: none;
   border-radius: 7px;
   font-family: var(--font-ibm-plex-sans), sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
-  background: var(--bg);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text2);
+  background: transparent;
   cursor: pointer;
-  transition: background .12s, border-color .12s;
+  transition: background .1s, color .1s;
+  box-sizing: border-box;
 }
-.new-chat-btn-sidebar:hover { background: var(--surface2); border-color: var(--accent); }
+.new-chat-btn-sidebar:hover { background: var(--surface2); color: var(--text); }
 
 .folder-box-sidebar {
   background: var(--surface2);
@@ -84,9 +92,9 @@ body {
 }
 .sidebar-conv-link {
   flex: 1; min-width: 0;
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 8px; border-radius: 5px;
-  font-size: 12px; color: var(--text2);
+  display: flex; align-items: center;
+  padding: 5px 8px; border-radius: 5px;
+  font-size: 13px; color: var(--text2);
   text-decoration: none;
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   transition: background .1s, color .1s;
@@ -100,13 +108,16 @@ body {
 }
 .sidebar-conv-del-btn:hover { color: var(--red); }
 
+/* Sidebar icon rail links */
+.sidebar-icon-link:hover { background: var(--surface2); color: var(--text); }
+
 /* ─── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 /* ─── Markdown ───────────────────────────────────────────────── */
-.markdown-content { font-size: 0.8125rem; line-height: 1.6; color: var(--text); }
+.markdown-content { font-size: 0.9375rem; line-height: 1.7; color: var(--text); }
 .markdown-content h1, .markdown-content h2, .markdown-content h3,
 .markdown-content h4, .markdown-content h5, .markdown-content h6 {
   font-weight: 600; margin: 0.5em 0 0.25em;
@@ -115,8 +126,10 @@ body {
 .markdown-content h2 { font-size: 1.05em; }
 .markdown-content h3 { font-size: 1em; }
 .markdown-content p { margin: 0.4em 0; }
-.markdown-content ul, .markdown-content ol { margin: 0.4em 0; padding-left: 1.4em; }
-.markdown-content li { margin: 0.15em 0; }
+.markdown-content ul, .markdown-content ol { margin: 0.4em 0; padding-left: 1.5em; }
+.markdown-content ul { list-style-type: disc !important; }
+.markdown-content ol { list-style-type: decimal !important; }
+.markdown-content li { margin: 0.25em 0; display: list-item !important; }
 .markdown-content code {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -150,84 +163,33 @@ body {
 .markdown-content th { background: var(--surface2); font-weight: 600; }
 .markdown-content hr { border: none; border-top: 1px solid var(--border); margin: 0.75em 0; }
 
-/* ─── Tool Call Badges ───────────────────────────────────────── */
-@keyframes tool-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-.tool-call-dot-pending { animation: tool-pulse 1.2s ease-in-out infinite; }
-
-/* ─── Thinking / Streaming State ────────────────────────────── */
-@keyframes thinking-wave {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
-  30% { transform: translateY(-5px); opacity: 1; }
-}
-.thinking-dots {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  padding: 3px 2px;
-}
-.thinking-dots span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text3);
-  animation: thinking-wave 1.4s ease-in-out infinite;
-}
-.thinking-dots span:nth-child(2) { animation-delay: 0.18s; }
-.thinking-dots span:nth-child(3) { animation-delay: 0.36s; }
-
-@keyframes cursor-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-.streaming-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: var(--text2);
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  animation: cursor-blink 0.9s step-end infinite;
-}
-
-/* ─── Processing Status (context-aware tool state) ───────────── */
-@keyframes status-in {
-  from { opacity: 0; transform: translateY(3px); }
+/* ─── Message Entrance ───────────────────────────────────────── */
+@keyframes msgFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.processing-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
-  animation: status-in 0.18s ease-out;
-}
-.processing-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--blue);
-  flex-shrink: 0;
-  animation: tool-pulse 1.2s ease-in-out infinite;
-}
-.processing-status-text {
-  font-size: 12px;
-  color: var(--text2);
-  font-family: var(--font-ibm-plex-mono), monospace;
-}
 
-/* ─── Elapsed Timer ──────────────────────────────────────────── */
-@keyframes timer-in {
-  from { opacity: 0; }
-  to   { opacity: 0.6; }
+/* ─── Thinking Text ──────────────────────────────────────────── */
+@keyframes thinking-sweep {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
 }
-.elapsed-timer {
-  font-size: 10px;
-  color: var(--text3);
-  font-family: var(--font-ibm-plex-mono), monospace;
-  padding-left: 4px;
-  animation: timer-in 0.4s ease-out;
-  opacity: 0.6;
+.thinking-text {
+  display: inline-block;
+  font-size: 13px;
+  font-family: var(--font-ibm-plex-sans), sans-serif;
+  padding: 4px 2px;
+  background: linear-gradient(
+    90deg,
+    var(--text3) 0%,
+    var(--text3) 30%,
+    var(--text)  50%,
+    var(--text3) 70%,
+    var(--text3) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-sweep 2s linear infinite;
 }

@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { MessageBubble } from "@/components/MessageBubble"
 import { ChatInput, buildFolderContext, writeFolderFile, moveFolderFile, type FolderContext, type ImageAttachment } from "@/components/ChatInput"
-import { RightPanel } from "@/components/RightPanel"
 import type { Artifact } from "@/components/ArtifactPanel"
 
 // ── IndexedDB: persist FileSystemDirectoryHandle per conversation ────────────
@@ -69,11 +68,11 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [folderReconnectName, setFolderReconnectName] = useState<string | null>(null)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [shareCopied, setShareCopied] = useState(false)
-  const [tendataRemaining, setTendataRemaining] = useState(500)
-  const [tendataLimit, setTendataLimit] = useState(500)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
   const [folderLoaded, setFolderLoaded] = useState(false)
+  const [stagedAttachments, setStagedAttachments] = useState<object[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const folderHandleRef = useRef<FileSystemDirectoryHandle | null>(null)
 
@@ -123,21 +122,24 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       sessionStorage.removeItem(`chip_prompt_${conversationId}`)
       setPendingPrompt(queued)
     }
+
+    // Pick up staged file attachment from empty-state page
+    const staged = sessionStorage.getItem(`staged_files_${conversationId}`)
+    if (staged) {
+      sessionStorage.removeItem(`staged_files_${conversationId}`)
+      try { setStagedAttachments(JSON.parse(staged)) } catch { /* ignore */ }
+    }
   }, [conversationId])
 
-  useEffect(() => {
-    fetch("/api/usage")
-      .then((r) => r.json())
-      .then((d) => {
-        setTendataRemaining(d.tendata?.remaining ?? 500)
-        setTendataLimit(d.tendata?.limit ?? 500)
-      })
-      .catch(() => {})
+  // Scroll to bottom — fires on every messages update (new msgs + streaming chunks)
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      const el = scrollContainerRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
   }, [])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
 
   // Auto-send queued prompt from empty-state page once messages + folder both ready
   useEffect(() => {
@@ -281,41 +283,57 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       {/* ── Chat Column ─────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        {/* ── Topbar ── */}
+        {/* ── Topbar — minimal, like claude.ai ── */}
         <div style={{
-          height: 44, flexShrink: 0,
-          borderBottom: "1.5px solid var(--border)",
+          height: 48, flexShrink: 0,
           display: "flex", alignItems: "center",
           padding: "0 20px", gap: 10,
           background: "var(--bg)",
         }}>
-          <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--text2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {folderHandle ? folderHandle.name : "Chat"}
           </div>
-          <button onClick={handleShare} style={{ ...topbarBtnStyle, color: shareCopied ? "var(--green)" : "var(--text2)" }}>
-            {shareCopied ? "Copied" : "Share ↗"}
+          <button
+            onClick={handleShare}
+            style={{
+              padding: "5px 14px",
+              border: "1px solid var(--border2)",
+              borderRadius: 8,
+              fontSize: 12,
+              fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+              background: shareCopied ? "var(--surface2)" : "transparent",
+              color: shareCopied ? "var(--green)" : "var(--text2)",
+              cursor: "pointer",
+              transition: "background .15s, color .15s",
+            }}
+            onMouseEnter={e => { if (!shareCopied) { e.currentTarget.style.background = "var(--surface2)"; e.currentTarget.style.color = "var(--text)" } }}
+            onMouseLeave={e => { if (!shareCopied) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text2)" } }}
+          >
+            {shareCopied ? "Copied" : "Share"}
           </button>
-          <span style={{ ...topbarBtnStyle, cursor: "default", userSelect: "none" }}>Sonnet 4.6</span>
         </div>
 
         {/* ── Messages ── */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column", gap: 20, background: "var(--bg)" }}>
-          {isLoadingMessages ? (
+        <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", padding: "24px 0 0", display: "flex", flexDirection: "column", gap: 0, background: "var(--bg)", position: "relative" }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column" }}>
+          {isLoadingMessages && !pendingPrompt ? (
             <div style={{ textAlign: "center", color: "var(--text3)", marginTop: 64, fontSize: 13 }}>Loading...</div>
-          ) : messages.length === 0 ? (
+          ) : messages.length === 0 && !pendingPrompt ? (
             <div style={{ textAlign: "center", color: "var(--text3)", marginTop: 64, fontSize: 13 }}>Start a conversation...</div>
           ) : (
             messages.map((m, i) => (
-              <MessageBubble
-                key={i}
-                role={m.role}
-                content={m.content}
-                toolCalls={m.toolCalls}
-                isStreaming={isStreaming && i === messages.length - 1}
-              />
+              <div key={i} style={{ padding: "0 32px", maxWidth: 800, width: "100%", margin: "0 auto", boxSizing: "border-box", paddingBottom: m.role === "user" ? 24 : 28 }}>
+                <MessageBubble
+                  role={m.role}
+                  content={m.content}
+                  toolCalls={m.toolCalls}
+                  isStreaming={isStreaming && i === messages.length - 1}
+                />
+              </div>
             ))
           )}
           <div ref={bottomRef} />
+          </div>
         </div>
 
         <ChatInput
@@ -329,19 +347,10 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           attachedFiles={attachedFiles}
           recentContext={messages.slice(-5).map(m => m.content).join(" ")}
           conversationId={conversationId}
+          initialTextAttachments={stagedAttachments}
         />
       </div>
 
-      {/* ── Right Panel (280px) ── */}
-      <RightPanel
-        artifacts={artifacts}
-        currentIndex={artifactIndex}
-        onNavigate={setArtifactIndex}
-        onClearArtifacts={() => setArtifacts([])}
-        folderHandle={folderHandle}
-        tendataRemaining={tendataRemaining}
-        tendataLimit={tendataLimit}
-      />
     </div>
   )
 }
