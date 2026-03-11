@@ -18,6 +18,7 @@ export default function ChatListPage() {
   const [loading, setLoading] = useState(false)
   const [folderHandle, setFolderHandle] = useState<FileSystemDirectoryHandle | null>(null)
   const [plusOpen, setPlusOpen] = useState(false)
+  const [stagedFile, setStagedFile] = useState<File | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const plusBtnRef = useRef<HTMLButtonElement>(null)
@@ -32,13 +33,29 @@ export default function ChatListPage() {
   }, [plusOpen])
 
   const startChat = async (prompt: string) => {
-    if (!prompt.trim() || loading) return
+    if ((!prompt.trim() && !stagedFile) || loading) return
     setLoading(true)
     const res = await fetch("/api/conversations", { method: "POST" }).catch(() => null)
     if (!res?.ok) { setLoading(false); return }
     const conv = await res.json().catch(() => null)
     if (!conv?.id) { setLoading(false); return }
-    sessionStorage.setItem(`chip_prompt_${conv.id}`, prompt.trim())
+
+    if (prompt.trim()) sessionStorage.setItem(`chip_prompt_${conv.id}`, prompt.trim())
+
+    // Upload staged file ถ้ามี
+    if (stagedFile) {
+      try {
+        const formData = new FormData()
+        formData.append("file", stagedFile)
+        formData.append("conversationId", conv.id)
+        const attachRes = await fetch("/api/files/attach", { method: "POST", body: formData })
+        if (attachRes.ok) {
+          const attachment = await attachRes.json()
+          sessionStorage.setItem(`staged_files_${conv.id}`, JSON.stringify([attachment]))
+        }
+      } catch { /* ignore */ }
+    }
+
     if (folderHandle) {
       try {
         await new Promise<void>((resolve) => {
@@ -73,6 +90,16 @@ export default function ChatListPage() {
       const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" })
       setFolderHandle(handle)
     } catch { /* cancelled */ }
+  }
+
+  const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    setPlusOpen(false)
+    setStagedFile(file)
+    // focus textarea ให้ user พิมพ์ต่อได้เลย
+    setTimeout(() => textareaRef.current?.focus(), 50)
   }
 
   return (
@@ -144,6 +171,28 @@ export default function ChatListPage() {
           {/* Input card */}
           <div className="hero-card hero-input" style={{ width: "100%" }}>
 
+            {/* Staged file badge */}
+            {stagedFile && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 16px 0" }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "3px 8px 3px 9px",
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: 5, fontSize: 11, color: "var(--text2)",
+                  fontFamily: "var(--font-ibm-plex-mono), monospace",
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  {stagedFile.name}
+                  <button
+                    onClick={() => setStagedFile(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 12, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                  >×</button>
+                </div>
+              </div>
+            )}
+
             {/* Folder badge */}
             {folderHandle && (
               <div style={{
@@ -189,7 +238,7 @@ export default function ChatListPage() {
 
             {/* Bottom bar */}
             <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-              <input ref={fileInputRef} type="file" style={{ display: "none" }} />
+              <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileAttach} />
 
               {/* + popover */}
               <div className="plus-wrap-hero" style={{ position: "relative" }}>
@@ -243,13 +292,13 @@ export default function ChatListPage() {
                 {/* Send button */}
                 <button
                   onClick={() => startChat(value)}
-                  disabled={!value.trim() || loading}
+                  disabled={(!value.trim() && !stagedFile) || loading}
                   style={{
                     width: 32, height: 32, borderRadius: 8,
-                    background: value.trim() && !loading ? "var(--accent)" : "var(--surface)",
-                    border: "1px solid " + (value.trim() && !loading ? "transparent" : "var(--border)"),
-                    cursor: value.trim() && !loading ? "pointer" : "default",
-                    color: value.trim() && !loading ? "var(--bg)" : "var(--text3)",
+                    background: (value.trim() || stagedFile) && !loading ? "var(--accent)" : "var(--surface)",
+                    border: "1px solid " + ((value.trim() || stagedFile) && !loading ? "transparent" : "var(--border)"),
+                    cursor: (value.trim() || stagedFile) && !loading ? "pointer" : "default",
+                    color: (value.trim() || stagedFile) && !loading ? "var(--bg)" : "var(--text3)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "background .15s",
                     flexShrink: 0,

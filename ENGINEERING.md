@@ -166,12 +166,12 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] CRON_SECRET + ADMIN_SECRET — set บน Vercel แล้ว
 - [x] Memory deduplication on write — cosine distance < 0.15 → update แทน create
 - [x] Admin UI Phase 1 — backend: GET /api/admin/users, GET/POST /api/admin/users/[id]/{files,config}
-- [x] Admin UI Phase 2 — frontend: /admin (users list + user detail tabs + upload modal + widget config editor)
+- [x] Admin UI Phase 2 — frontend: /admin (users list + user detail **6 tabs**: Graph/Files/Memories/Skills/Tasks/Config + upload modal + file replace modal + widget config editor)
 - [x] File Versioning — PUT /api/files/[id] + PUT /api/admin/users/[id]/files/[fileId] · replace in-place (keeps fileId) · UserFile.updatedAt added
 - [x] Admin UI — User Graph View — pure SVG radial spoke · User→Files/Skills/Memory/Tasks · hover tooltip · zero dependencies
 
 ### NEXT
-- [ ] Agent Layer — UserAgent table, per-company agents (Phase 3)
+- [ ] Agent Layer — UserAgent table + use_agent tool + Admin UI Agents tab + UserGraphView 5th spoke (ADR-006)
 
 ### LATER
 - ดูเพิ่มเติมใน `IDEAS.md` และ `CLAUDE.md` → Roadmap section
@@ -187,6 +187,7 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 | [003](docs/adr/ADR-003-db-rate-limit.md) | Rate limit → DB-backed | Accepted | 2026-03-10 |
 | [004](docs/adr/ADR-004-tendata-architecture.md) | Tendata backend-only via UserTradeData | Accepted | 2026-03-10 |
 | [005](docs/adr/ADR-005-pgvector-semantic-memory.md) | pgvector semantic memory search | Accepted | 2026-03-10 |
+| [006](docs/adr/ADR-006-agent-layer.md) | Agent Layer — per-user sub-agents (Claude Code in web) | Accepted | 2026-03-11 |
 
 ---
 

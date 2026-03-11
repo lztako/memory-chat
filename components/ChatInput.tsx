@@ -34,6 +34,7 @@ interface Props {
   attachedFiles?: string[]   // DB files — permanent badges (right panel uploads)
   recentContext?: string
   conversationId: string
+  initialTextAttachments?: object[]  // staged from empty-state attach
 }
 
 // ── Folder helpers (browser FileSystem API) ─────────────────────────────────
@@ -145,10 +146,12 @@ async function moveFolderFile(handle: FileSystemDirectoryHandle, from: string, t
 
 export { writeFolderFile, moveFolderFile }
 
-export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle, onFolderOpen, folderReconnectName, attachedFiles = [], recentContext = "", conversationId }: Props) {
+export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle, onFolderOpen, folderReconnectName, attachedFiles = [], recentContext = "", conversationId, initialTextAttachments = [] }: Props) {
   const [value, setValue] = useState("")
   const [isUploading, setIsUploading] = useState(false)
-  const [textAttachments, setTextAttachments] = useState<TextAttachment[]>([])
+  const [textAttachments, setTextAttachments] = useState<TextAttachment[]>(
+    initialTextAttachments as TextAttachment[]
+  )
   const [imageAttachments, setImageAttachments] = useState<ImageAttachment[]>([])
   const [skills, setSkills] = useState<Skill[]>([])
   const [slashOpen, setSlashOpen] = useState(false)
@@ -250,7 +253,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
       return
     }
 
-    if (!["csv", "txt", "json"].includes(ext)) return
+    if (!["csv", "txt", "json", "xlsx", "xls"].includes(ext)) return
 
     setIsUploading(true)
     try {
@@ -318,8 +321,8 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
         </div>
       )}
 
-      {/* ── Chat Attachments (ephemeral) ── */}
-      {(textAttachments.length > 0 || imageAttachments.length > 0) && (
+      {/* ── Chat Attachments (ephemeral) — moved inside Input Box below ── */}
+      {false && (textAttachments.length > 0 || imageAttachments.length > 0) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
           {textAttachments.map((f) => (
             <div key={f.id} style={{
@@ -437,6 +440,49 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
         onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border2)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 40px rgba(0,0,0,.45)" }}
         onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 32px rgba(0,0,0,.35)" }}
       >
+        {/* ── Attachments inside card ── */}
+        {(textAttachments.length > 0 || imageAttachments.length > 0) && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 14px 0" }}>
+            {textAttachments.map((f) => (
+              <div key={f.id} style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "3px 8px 3px 9px",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: 6, fontSize: 11, color: "var(--text2)",
+                fontFamily: "var(--font-ibm-plex-mono), monospace",
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                </svg>
+                {f.fileName}
+                {f.rowCount != null && <span style={{ color: "var(--text3)" }}>{f.rowCount}r</span>}
+                <button
+                  onClick={() => setTextAttachments((prev) => prev.filter((x) => x.id !== f.id))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 12, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                >×</button>
+              </div>
+            ))}
+            {imageAttachments.map((img, i) => (
+              <div key={i} style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "3px 8px 3px 9px",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: 6, fontSize: 11, color: "var(--text2)",
+                fontFamily: "var(--font-ibm-plex-mono), monospace",
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                </svg>
+                {img.name}
+                <button
+                  onClick={() => setImageAttachments((prev) => prev.filter((_, j) => j !== i))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 12, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Textarea + Send */}
         <div style={{ display: "flex", alignItems: "flex-end", padding: "12px 14px", gap: 10 }}>
           <textarea
@@ -491,7 +537,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
 
         {/* Bottom bar: + button + hint */}
         <div style={{ padding: "6px 12px 10px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
-          <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileChange} />
+          <input ref={fileInputRef} type="file" accept=".csv,.txt,.json,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.webp" style={{ display: "none" }} onChange={handleFileChange} />
 
           {/* + popover */}
           <div className="plus-popover-wrap" style={{ position: "relative" }}>

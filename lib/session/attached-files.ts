@@ -1,12 +1,14 @@
 export interface AttachedFile {
   id: string
   fileName: string
-  fileType: "csv" | "json" | "txt"
+  fileType: "csv" | "json" | "txt" | "xlsx"
   columns?: string[]
   data: Record<string, unknown>[]
   rawText?: string
   rowCount: number
   attachedAt: number
+  // xlsx only — info about all sheets (primary sheet data is in `data` above)
+  sheets?: Array<{ name: string; rowCount: number; columns: string[] }>
 }
 
 const store = new Map<string, AttachedFile[]>()

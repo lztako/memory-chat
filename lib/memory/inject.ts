@@ -98,6 +98,7 @@ type AttachedFileSummary = {
   fileType: string
   columns?: string[]
   rowCount: number
+  sheets?: Array<{ name: string; rowCount: number; columns: string[] }>
 }
 
 function buildAttachedFilesSection(files: AttachedFileSummary[]): string {
@@ -106,6 +107,12 @@ function buildAttachedFilesSection(files: AttachedFileSummary[]): string {
   for (const f of files) {
     if (f.fileType === "txt") {
       lines.push(`- ${f.fileName} [TXT] — id: ${f.id}`)
+    } else if (f.fileType === "xlsx" && f.sheets && f.sheets.length > 1) {
+      // Multi-sheet xlsx — show primary sheet + list all sheets
+      lines.push(
+        `- ${f.fileName} [XLSX] — ${f.sheets.length} sheets, primary: "${f.sheets[0]?.name}" (${f.rowCount} rows, columns: ${f.columns?.join(", ")}) — id: ${f.id}`
+      )
+      lines.push(`  Sheets: ${f.sheets.map((s) => `"${s.name}" (${s.rowCount}r)`).join(", ")}`)
     } else {
       lines.push(
         `- ${f.fileName} [${f.fileType.toUpperCase()}] — ${f.rowCount} rows, columns: ${f.columns?.join(", ")} — id: ${f.id}`
@@ -201,7 +208,7 @@ ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSect
 - ใช้ update_context_state ทันทีหลังเริ่ม quiz หรือ task ใหม่
 - ใช้ save_memory เมื่อ user บอกข้อมูลสำคัญโดยตรง
 - ใช้ save_skill ทันทีหลังแก้ปัญหาที่ไม่ชัดเจน (column แปลก, format พิเศษ, logic เฉพาะของ user) เพื่อให้จำได้ครั้งต่อไป
-- ใช้ query_attached_file เมื่อ user ส่งไฟล์มาในแชท (CSV/JSON/TXT) — ดู system prompt ส่วน "ไฟล์ที่แนบมา" สำหรับ fileId
+- ใช้ query_attached_file เมื่อ user ส่งไฟล์มาในแชท (CSV/JSON/TXT/XLSX) — ดู system prompt ส่วน "ไฟล์ที่แนบมา" สำหรับ fileId
 
 ## การค้นหาไฟล์ (สำคัญ):
 - ไฟล์ทั้งหมดของ user อยู่ใน section "ไฟล์ข้อมูลของ user" ด้านบนแล้ว — ใช้ id จากนั้น call query_user_file ได้เลย ไม่ต้อง list ก่อน

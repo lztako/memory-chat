@@ -70,6 +70,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [shareCopied, setShareCopied] = useState(false)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
   const [folderLoaded, setFolderLoaded] = useState(false)
+  const [stagedAttachments, setStagedAttachments] = useState<object[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -120,6 +121,13 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     if (queued) {
       sessionStorage.removeItem(`chip_prompt_${conversationId}`)
       setPendingPrompt(queued)
+    }
+
+    // Pick up staged file attachment from empty-state page
+    const staged = sessionStorage.getItem(`staged_files_${conversationId}`)
+    if (staged) {
+      sessionStorage.removeItem(`staged_files_${conversationId}`)
+      try { setStagedAttachments(JSON.parse(staged)) } catch { /* ignore */ }
     }
   }, [conversationId])
 
@@ -339,6 +347,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           attachedFiles={attachedFiles}
           recentContext={messages.slice(-5).map(m => m.content).join(" ")}
           conversationId={conversationId}
+          initialTextAttachments={stagedAttachments}
         />
       </div>
 
