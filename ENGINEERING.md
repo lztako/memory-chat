@@ -168,9 +168,9 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] Admin UI Phase 1 — backend: GET /api/admin/users, GET/POST /api/admin/users/[id]/{files,config}
 - [x] Admin UI Phase 2 — frontend: /admin (users list + user detail tabs + upload modal + widget config editor)
 - [x] File Versioning — PUT /api/files/[id] + PUT /api/admin/users/[id]/files/[fileId] · replace in-place (keeps fileId) · UserFile.updatedAt added
+- [x] Admin UI — User Graph View — pure SVG radial spoke · User→Files/Skills/Memory/Tasks · hover tooltip · zero dependencies
 
 ### NEXT
-- [ ] Admin UI — User Graph View (node graph: User → Files → Skills → Memory · แรงบันดาลใจ n8n/Opal)
 - [ ] Agent Layer — UserAgent table, per-company agents (Phase 3)
 
 ### LATER

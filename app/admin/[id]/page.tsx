@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAdminAuth } from "../layout"
+import { UserGraphView } from "@/components/admin/UserGraphView"
 
 type UserDetail = {
   id: string
@@ -16,8 +17,9 @@ type UserDetail = {
   dashboard: { widgets: unknown[]; updatedAt: string } | null
 }
 
-type Tab = "files" | "memories" | "skills" | "tasks" | "config"
+type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph"
 const TABS: { key: Tab; label: string }[] = [
+  { key: "graph", label: "Graph" },
   { key: "files", label: "Files" },
   { key: "memories", label: "Memories" },
   { key: "skills", label: "Skills" },
@@ -170,6 +172,7 @@ export default function AdminUserDetailPage() {
   )
 
   const tabCount: Record<Tab, number> = {
+    graph: user.files.length + user.skills.length + user.memories.length + user.tasks.length,
     files: user.files.length,
     memories: user.memories.length,
     skills: user.skills.length,
@@ -238,6 +241,17 @@ export default function AdminUserDetailPage() {
           </button>
         ))}
       </div>
+
+      {/* GRAPH TAB */}
+      {tab === "graph" && (
+        <UserGraphView
+          email={user.email}
+          files={user.files}
+          skills={user.skills}
+          memories={user.memories}
+          tasks={user.tasks}
+        />
+      )}
 
       {/* FILES TAB */}
       {tab === "files" && (
