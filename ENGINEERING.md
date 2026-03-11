@@ -169,9 +169,11 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] Admin UI Phase 2 — frontend: /admin (users list + user detail **6 tabs**: Graph/Files/Memories/Skills/Tasks/Config + upload modal + file replace modal + widget config editor)
 - [x] File Versioning — PUT /api/files/[id] + PUT /api/admin/users/[id]/files/[fileId] · replace in-place (keeps fileId) · UserFile.updatedAt added
 - [x] Admin UI — User Graph View — pure SVG radial spoke · User→Files/Skills/Memory/Tasks · hover tooltip · zero dependencies
+- [x] xlsx UC1 — parse .xlsx in chat (SheetJS, auto header detection, multi-sheet) · attach from empty state · badge inside input card
+- [x] Agent Layer — UserAgent table · use_agent tool (isolated Haiku loop) · seed 3 global agents · Admin UI Agents tab · UserGraphView 5th spoke (purple) · ADR-006
 
 ### NEXT
-- [ ] Agent Layer — UserAgent table + use_agent tool + Admin UI Agents tab + UserGraphView 5th spoke (ADR-006)
+- (ว่าง — เลือก item จาก LATER หรือรอ forcing function)
 
 ### LATER
 - ดูเพิ่มเติมใน `IDEAS.md` และ `CLAUDE.md` → Roadmap section
