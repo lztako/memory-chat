@@ -52,12 +52,40 @@ export default function AdminUserDetailPage() {
   const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("files")
 
-  // Upload modal state
+  // Upload modal state (new file)
   const [uploading, setUploading] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [uploadFileType, setUploadFileType] = useState("other")
   const [uploadDesc, setUploadDesc] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Replace modal state (replace existing file)
+  const [replacingFileId, setReplacingFileId] = useState<string | null>(null)
+  const [replacing, setReplacing] = useState(false)
+  const replaceInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleReplace(e: React.FormEvent) {
+    e.preventDefault()
+    const file = replaceInputRef.current?.files?.[0]
+    if (!file || !replacingFileId) return
+    setReplacing(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    try {
+      const r = await fetch(`/api/admin/users/${userId}/files/${replacingFileId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${secret}` },
+        body: fd,
+      })
+      if (!r.ok) throw new Error("Replace failed")
+      setReplacingFileId(null)
+      await load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Replace failed")
+    } finally {
+      setReplacing(false)
+    }
+  }
 
   // Widget config state
   const [widgetJson, setWidgetJson] = useState("")
@@ -230,6 +258,50 @@ export default function AdminUserDetailPage() {
             </button>
           </div>
 
+          {/* Replace modal */}
+          {replacingFileId && (
+            <div style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,.6)",
+              display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200,
+            }}>
+              <form
+                onSubmit={handleReplace}
+                style={{
+                  background: "var(--surface)", border: "1.5px solid var(--border)",
+                  borderRadius: 12, padding: 24, width: 400,
+                  display: "flex", flexDirection: "column", gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>Replace file</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)" }}>fileId จะคงเดิม — widget config ไม่ต้องแก้</div>
+                </div>
+                <input ref={replaceInputRef} type="file" accept=".csv" required
+                  style={{ fontSize: 12, color: "var(--text2)" }} />
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button type="button" onClick={() => setReplacingFileId(null)}
+                    style={{
+                      padding: "6px 14px", border: "1.5px solid var(--border)",
+                      borderRadius: 6, background: "none", fontSize: 11,
+                      color: "var(--text3)", cursor: "pointer",
+                      fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                    }}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={replacing}
+                    style={{
+                      padding: "6px 14px", background: "var(--orange)", color: "var(--bg)",
+                      border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      cursor: replacing ? "not-allowed" : "pointer", opacity: replacing ? 0.6 : 1,
+                      fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                    }}>
+                    {replacing ? "Replacing..." : "Replace"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {/* Upload modal */}
           {showUpload && (
             <div style={{
@@ -313,9 +385,24 @@ export default function AdminUserDetailPage() {
                     <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 7px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>{f.columns.length} cols</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)", whiteSpace: "nowrap" }}>
-                  {new Date(f.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)", whiteSpace: "nowrap" }}>
+                    {new Date(f.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  </span>
+                  <button
+                    onClick={() => setReplacingFileId(f.id)}
+                    title="Replace file content (keeps same fileId)"
+                    style={{
+                      fontSize: 10, padding: "3px 8px",
+                      border: "1px solid var(--border)", borderRadius: 4,
+                      background: "none", color: "var(--text3)", cursor: "pointer",
+                      fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Replace
+                  </button>
+                </div>
               </div>
             ))}
           </div>

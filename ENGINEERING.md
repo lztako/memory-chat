@@ -167,9 +167,10 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] Memory deduplication on write — cosine distance < 0.15 → update แทน create
 - [x] Admin UI Phase 1 — backend: GET /api/admin/users, GET/POST /api/admin/users/[id]/{files,config}
 - [x] Admin UI Phase 2 — frontend: /admin (users list + user detail tabs + upload modal + widget config editor)
+- [x] File Versioning — PUT /api/files/[id] + PUT /api/admin/users/[id]/files/[fileId] · replace in-place (keeps fileId) · UserFile.updatedAt added
 
 ### NEXT
-- [ ] Admin UI — File Versioning (upload ทับ fileId เดิมได้)
+- [ ] Admin UI — User Graph View (node graph: User → Files → Skills → Memory · แรงบันดาลใจ n8n/Opal)
 - [ ] Agent Layer — UserAgent table, per-company agents (Phase 3)
 
 ### LATER

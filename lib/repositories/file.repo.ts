@@ -39,6 +39,22 @@ export const fileRepo = {
     return prisma.userFile.updateMany({ where: { id, userId }, data: { fileName: newName } })
   },
 
+  async replace(id: string, userId: string, data: {
+    fileName: string
+    fileType?: string
+    description?: string
+    mimeType: string
+    size: number
+    rowCount: number
+    columns: string[]
+    data: unknown[]
+  }) {
+    return prisma.userFile.updateMany({
+      where: { id, userId },
+      data: { ...data, data: data.data as object[] },
+    })
+  },
+
   async delete(id: string, userId: string) {
     return prisma.userFile.deleteMany({ where: { id, userId } })
   },
