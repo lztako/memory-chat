@@ -9,8 +9,8 @@ interface SidebarProps {
   conversations: Conversation[]
   userInitial: string
   userEmail: string
-  signOut: () => Promise<never>
-  deleteConversation: (id: string) => Promise<never>
+  signOut: () => Promise<void>
+  deleteConversation: (id: string) => Promise<void>
 }
 
 // Panel/sidebar toggle icon — matches claude.ai's □ icon
