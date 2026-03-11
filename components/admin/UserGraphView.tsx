@@ -6,6 +6,7 @@ type FileNode   = { id: string; fileName: string; fileType: string; rowCount: nu
 type SkillNode  = { id: string; name: string; trigger: string; usageCount: number }
 type MemoryNode = { id: string; type: string; content: string; importance: number; layer: string }
 type TaskNode   = { id: string; title: string; status: string; priority: string }
+type AgentNode  = { id: string; name: string; model: string; tools: string[]; isActive: boolean }
 
 type Props = {
   email: string
@@ -13,6 +14,7 @@ type Props = {
   skills: SkillNode[]
   memories: MemoryNode[]
   tasks: TaskNode[]
+  agents: AgentNode[]
 }
 
 type GNode = {
@@ -42,12 +44,13 @@ const LEAF_R = 295
 
 const CATS = {
   files:    { label: "FILES",   color: "var(--blue)",   angle: -Math.PI / 2 },
-  skills:   { label: "SKILLS",  color: "var(--orange)", angle: 0 },
-  memories: { label: "MEMORY",  color: "var(--green)",  angle: Math.PI / 2 },
-  tasks:    { label: "TASKS",   color: "var(--red)",    angle: Math.PI },
+  skills:   { label: "SKILLS",  color: "var(--orange)", angle: 2 * Math.PI / 5 - Math.PI / 2 },
+  memories: { label: "MEMORY",  color: "var(--green)",  angle: 4 * Math.PI / 5 - Math.PI / 2 },
+  tasks:    { label: "TASKS",   color: "var(--red)",    angle: 6 * Math.PI / 5 - Math.PI / 2 },
+  agents:   { label: "AGENTS",  color: "#a78bfa",       angle: 8 * Math.PI / 5 - Math.PI / 2 },
 } as const
 
-function leafTooltip(key: keyof typeof CATS, item: FileNode | SkillNode | MemoryNode | TaskNode): string[] {
+function leafTooltip(key: keyof typeof CATS, item: FileNode | SkillNode | MemoryNode | TaskNode | AgentNode): string[] {
   if (key === "files") {
     const f = item as FileNode
     return [f.fileName, `${f.fileType} · ${f.rowCount} rows`]
@@ -60,13 +63,18 @@ function leafTooltip(key: keyof typeof CATS, item: FileNode | SkillNode | Memory
     const m = item as MemoryNode
     return [m.content.slice(0, 55) + (m.content.length > 55 ? "…" : ""), `imp ${m.importance} · ${m.layer}`]
   }
+  if (key === "agents") {
+    const a = item as AgentNode
+    const modelLabel = a.model.includes("haiku") ? "haiku" : a.model.includes("sonnet") ? "sonnet" : a.model
+    return [a.name, `${modelLabel} · ${a.tools.length} tools`, a.isActive ? "active" : "inactive"]
+  }
   const t = item as TaskNode
   return [t.title, `${t.status} · ${t.priority}`]
 }
 
 function clip(s: string, n: number) { return s.length > n ? s.slice(0, n - 1) + "…" : s }
 
-export function UserGraphView({ email, files, skills, memories, tasks }: Props) {
+export function UserGraphView({ email, files, skills, memories, tasks, agents }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null)
@@ -83,11 +91,12 @@ export function UserGraphView({ email, files, skills, memories, tasks }: Props) 
       color: "var(--text)",
     })
 
-    const categories: { key: keyof typeof CATS; items: (FileNode | SkillNode | MemoryNode | TaskNode)[] }[] = [
+    const categories: { key: keyof typeof CATS; items: (FileNode | SkillNode | MemoryNode | TaskNode | AgentNode)[] }[] = [
       { key: "files",    items: files.slice(0, 5) },
       { key: "skills",   items: skills.slice(0, 5) },
       { key: "memories", items: memories.slice(0, 5) },
       { key: "tasks",    items: tasks.slice(0, 5) },
+      { key: "agents",   items: agents.slice(0, 5) },
     ]
 
     for (const { key, items } of categories) {
@@ -116,6 +125,7 @@ export function UserGraphView({ email, files, skills, memories, tasks }: Props) 
         if (key === "skills")   label = clip((items[i] as SkillNode).name, 13)
         if (key === "memories") label = clip((items[i] as MemoryNode).content, 13)
         if (key === "tasks")    label = clip((items[i] as TaskNode).title, 13)
+        if (key === "agents")   label = clip((items[i] as AgentNode).name, 13)
 
         nodes.push({
           id: leafId, x: lx, y: ly, kind: "leaf",
@@ -127,7 +137,7 @@ export function UserGraphView({ email, files, skills, memories, tasks }: Props) 
     }
 
     return { nodes, edges }
-  }, [email, files, skills, memories, tasks])
+  }, [email, files, skills, memories, tasks, agents])
 
   const nodeMap = useMemo(() => Object.fromEntries(nodes.map(n => [n.id, n])), [nodes])
 

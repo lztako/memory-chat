@@ -17,13 +17,19 @@ type UserDetail = {
   dashboard: { widgets: unknown[]; updatedAt: string } | null
 }
 
-type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph"
+type AgentEntry = {
+  id: string; name: string; description: string; systemPrompt: string
+  tools: string[]; model: string; isActive: boolean; createdAt: string
+}
+
+type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph" | "agents"
 const TABS: { key: Tab; label: string }[] = [
   { key: "graph", label: "Graph" },
   { key: "files", label: "Files" },
   { key: "memories", label: "Memories" },
   { key: "skills", label: "Skills" },
   { key: "tasks", label: "Tasks" },
+  { key: "agents", label: "Agents" },
   { key: "config", label: "Widget Config" },
 ]
 
@@ -50,6 +56,7 @@ export default function AdminUserDetailPage() {
   const userId = params.id
 
   const [user, setUser] = useState<UserDetail | null>(null)
+  const [agents, setAgents] = useState<{ global: AgentEntry[]; perUser: AgentEntry[] }>({ global: [], perUser: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("files")
@@ -97,13 +104,18 @@ export default function AdminUserDetailPage() {
   async function load() {
     setLoading(true)
     try {
-      const r = await fetch(`/api/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${secret}` },
-      })
+      const [r, ar] = await Promise.all([
+        fetch(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${secret}` } }),
+        fetch(`/api/admin/users/${userId}/agents`, { headers: { Authorization: `Bearer ${secret}` } }),
+      ])
       if (!r.ok) throw new Error(r.status === 401 ? "Unauthorized" : "Not found")
       const data = await r.json()
       setUser(data)
       setWidgetJson(JSON.stringify(data.dashboard?.widgets ?? [], null, 2))
+      if (ar.ok) {
+        const ad = await ar.json()
+        setAgents({ global: ad.global ?? [], perUser: ad.perUser ?? [] })
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error")
     } finally {
@@ -171,12 +183,14 @@ export default function AdminUserDetailPage() {
     </div>
   )
 
+  const totalAgents = agents.global.length + agents.perUser.length
   const tabCount: Record<Tab, number> = {
-    graph: user.files.length + user.skills.length + user.memories.length + user.tasks.length,
+    graph: user.files.length + user.skills.length + user.memories.length + user.tasks.length + totalAgents,
     files: user.files.length,
     memories: user.memories.length,
     skills: user.skills.length,
     tasks: user.tasks.length,
+    agents: totalAgents,
     config: user.dashboard?.widgets.length ?? 0,
   }
 
@@ -250,6 +264,7 @@ export default function AdminUserDetailPage() {
           skills={user.skills}
           memories={user.memories}
           tasks={user.tasks}
+          agents={[...agents.global, ...agents.perUser]}
         />
       )}
 
@@ -507,6 +522,101 @@ export default function AdminUserDetailPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* AGENTS TAB */}
+      {tab === "agents" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Global agents */}
+          <div>
+            <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 10 }}>
+              Global Agents — available to all users
+            </div>
+            <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              {agents.global.length === 0 ? (
+                <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No global agents</div>
+              ) : agents.global.map((a, i) => (
+                <div key={a.id} style={{
+                  padding: "12px 16px",
+                  borderBottom: i < agents.global.length - 1 ? "1px solid var(--border)" : "none",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.name}</span>
+                    <span style={{
+                      fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
+                      padding: "2px 6px", borderRadius: 3,
+                      background: "var(--surface2)", border: "1px solid var(--border)",
+                      color: a.isActive ? "var(--green)" : "var(--text3)",
+                    }}>{a.isActive ? "active" : "inactive"}</span>
+                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
+                      {a.model.includes("haiku") ? "haiku" : a.model.includes("sonnet") ? "sonnet" : a.model}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6, lineHeight: 1.5 }}>{a.description.split(".")[0]}.</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {a.tools.map(t => (
+                      <span key={t} style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--blue)" }}>{t}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Per-user agents */}
+          <div>
+            <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 10 }}>
+              User-specific Agents
+            </div>
+            <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              {agents.perUser.length === 0 ? (
+                <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No user-specific agents</div>
+              ) : agents.perUser.map((a, i) => (
+                <div key={a.id} style={{
+                  padding: "12px 16px",
+                  borderBottom: i < agents.perUser.length - 1 ? "1px solid var(--border)" : "none",
+                  display: "flex", alignItems: "flex-start", gap: 12,
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.name}</span>
+                      <span style={{
+                        fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
+                        padding: "2px 6px", borderRadius: 3,
+                        background: "var(--surface2)", border: "1px solid var(--border)",
+                        color: a.isActive ? "var(--green)" : "var(--text3)",
+                      }}>{a.isActive ? "active" : "inactive"}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {a.tools.map(t => (
+                        <span key={t} style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--blue)" }}>{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await fetch(`/api/admin/users/${userId}/agents`, {
+                        method: "PATCH",
+                        headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ agentId: a.id, isActive: !a.isActive }),
+                      })
+                      await load()
+                    }}
+                    style={{
+                      fontSize: 10, padding: "3px 8px",
+                      border: "1px solid var(--border)", borderRadius: 4,
+                      background: "none", color: "var(--text3)", cursor: "pointer",
+                      fontFamily: "var(--font-ibm-plex-sans), sans-serif", whiteSpace: "nowrap",
+                    }}
+                  >
+                    {a.isActive ? "Disable" : "Enable"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
