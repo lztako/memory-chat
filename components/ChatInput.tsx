@@ -283,7 +283,9 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
   }
 
   return (
-    <div style={{ padding: "12px 32px 16px", borderTop: "1.5px solid var(--border)", background: "var(--bg)", flexShrink: 0, position: "relative" }}>
+    <div style={{ padding: "0 24px 24px", background: "var(--bg)", flexShrink: 0, position: "relative" }}>
+      {/* Gradient fade */}
+      <div style={{ position: "absolute", top: -60, left: 0, right: 0, height: 60, background: "linear-gradient(to bottom, transparent, var(--bg))", pointerEvents: "none" }} />
 
       {/* ── Slash Command Dropdown ── */}
       {slashOpen && filteredSkills.length > 0 && (
@@ -423,13 +425,17 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
 
       {/* ── Input Box ── */}
       <div style={{
-        border: "1.5px solid var(--border2)",
-        borderRadius: 10,
-        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 20,
+        background: "var(--surface2)",
         overflow: "visible",
+        boxShadow: "0 4px 32px rgba(0,0,0,.35)",
+        transition: "border-color .2s, box-shadow .2s",
+        maxWidth: 760,
+        margin: "0 auto",
       }}
-        onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)" }}
-        onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border2)" }}
+        onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border2)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 40px rgba(0,0,0,.45)" }}
+        onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 32px rgba(0,0,0,.35)" }}
       >
         {/* Textarea + Send */}
         <div style={{ display: "flex", alignItems: "flex-end", padding: "12px 14px", gap: 10 }}>
@@ -438,7 +444,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
             value={value}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={isUploading ? "Uploading..." : "พิมพ์ข้อความ หรือ / สำหรับ skills..."}
+            placeholder={isUploading ? "Uploading..." : "Reply..."}
             disabled={isStreaming ? false : disabled}
             rows={1}
             style={{
@@ -453,11 +459,15 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
               onClick={onStop}
               style={{
                 width: 32, height: 32, flexShrink: 0,
-                background: "var(--red)", border: "none", borderRadius: 6,
-                cursor: "pointer", color: "var(--bg)", fontSize: 12, fontWeight: 600,
+                background: "var(--accent)", border: "none", borderRadius: 8,
+                cursor: "pointer", color: "var(--bg)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
-            >■</button>
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <rect x="2" y="2" width="8" height="8" rx="1.5"/>
+              </svg>
+            </button>
           ) : (
             <button
               onClick={doSend}
@@ -465,14 +475,17 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
               style={{
                 width: 32, height: 32, flexShrink: 0,
                 background: value.trim() ? "var(--accent)" : "var(--surface2)",
-                border: "none", borderRadius: 6,
+                border: "none", borderRadius: 8,
                 cursor: value.trim() ? "pointer" : "default",
                 color: value.trim() ? "var(--bg)" : "var(--text3)",
-                fontSize: 16,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background .15s",
               }}
-            >↑</button>
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+              </svg>
+            </button>
           )}
         </div>
 
@@ -540,7 +553,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
           </div>
 
           <span style={{ marginLeft: "auto", fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)" }}>
-            / for skills · ⏎ send
+            claude sonnet 4.6
           </span>
         </div>
       </div>

@@ -50,6 +50,48 @@ function buildUserConfigSection(configs: UserConfig[]): string {
   return `\n\n## วิธีทำงานกับ user คนนี้ (AI Config):\n${configs.map((c) => `- ${c.content}`).join("\n")}`
 }
 
+type ActiveTask = {
+  id: string
+  title: string
+  status: string
+  priority: string
+  dueDate: Date | null
+  linkedCompany: string | null
+}
+
+function buildActiveTasksSection(tasks: ActiveTask[]): string {
+  if (tasks.length === 0) return ""
+  const now = new Date()
+  const fmt = (d: Date) => d.toLocaleDateString("th-TH", { day: "numeric", month: "short" })
+  const lines = ["\n\n## Tasks ที่ยังค้างอยู่ (ใช้ update_task พร้อม id เพื่ออัปเดต):"]
+  for (const t of tasks) {
+    const due = t.dueDate ? ` — ครบ ${fmt(t.dueDate)}${t.dueDate < now ? " (เลยกำหนด)" : ""}` : ""
+    const company = t.linkedCompany ? ` [${t.linkedCompany}]` : ""
+    lines.push(`- [${t.status}] ${t.title}${company} (priority: ${t.priority})${due} — id: ${t.id}`)
+  }
+  return lines.join("\n")
+}
+
+type UserFileSummary = {
+  id: string
+  fileName: string
+  fileType: string | null
+  description: string | null
+  rowCount: number
+  columns: string[]
+}
+
+function buildUserFilesSection(files: UserFileSummary[]): string {
+  if (files.length === 0) return ""
+  const lines = ["\n\n## ไฟล์ข้อมูลของ user ในระบบ (ใช้ query_user_file พร้อม id เพื่อดูข้อมูล):"]
+  for (const f of files) {
+    const desc = f.description ? ` — ${f.description}` : ""
+    const cols = f.columns.length > 0 ? `, columns: ${f.columns.join(", ")}` : ""
+    lines.push(`- ${f.fileName} [${f.fileType ?? "unknown"}] — ${f.rowCount} rows${cols}${desc} — id: ${f.id}`)
+  }
+  return lines.join("\n")
+}
+
 type AttachedFileSummary = {
   id: string
   fileName: string
@@ -111,7 +153,7 @@ function buildReminderSection(tasks: ReminderTask[]): string {
   return lines.join("\n")
 }
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = [], message = "", attachedFiles: AttachedFileSummary[] = [], skillsPreFiltered = false): string {
+export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = [], message = "", attachedFiles: AttachedFileSummary[] = [], skillsPreFiltered = false, userFiles: UserFileSummary[] = [], activeTasks: ActiveTask[] = []): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -137,13 +179,15 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
     : filterRelevantSkills(skills, message)
   const skillsSection = buildSkillsSection(relevantSkills)
   const attachedFilesSection = buildAttachedFilesSection(attachedFiles)
+  const userFilesSection = buildUserFilesSection(userFiles)
+  const activeTasksSection = buildActiveTasksSection(activeTasks)
 
   return `You are a personal AI assistant for import/export professionals.
 วันนี้คือ ${today}
 
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
-${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSection}${attachedFilesSection}
+${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSection}${activeTasksSection}${userFilesSection}${attachedFilesSection}
 
 ## Rules:
 - ตอบเป็นภาษาไทยถ้า user พูดภาษาไทย
@@ -160,8 +204,8 @@ ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSect
 - ใช้ query_attached_file เมื่อ user ส่งไฟล์มาในแชท (CSV/JSON/TXT) — ดู system prompt ส่วน "ไฟล์ที่แนบมา" สำหรับ fileId
 
 ## การค้นหาไฟล์ (สำคัญ):
-- เมื่อ user พูดถึงชื่อไฟล์ใดๆ → ให้ใช้ list_user_files ก่อนเสมอ เพื่อดูว่าไฟล์นั้น upload ไว้ในระบบหรือเปล่า
-- ถ้ามี local folder เปิดอยู่ด้วย → ให้ call ทั้ง list_user_files และ list_folder_tree พร้อมกัน (parallel) แล้วหาจากทั้งสองที่
+- ไฟล์ทั้งหมดของ user อยู่ใน section "ไฟล์ข้อมูลของ user" ด้านบนแล้ว — ใช้ id จากนั้น call query_user_file ได้เลย ไม่ต้อง list ก่อน
+- ถ้ามี local folder เปิดอยู่ด้วย → ให้ call list_folder_tree เพื่อดูไฟล์ใน folder
 - อย่าสรุปว่า "หาไม่เจอ" โดยดูแค่ที่เดียว
 
 ## Local Folder (เมื่อ user เปิด folder ไว้):

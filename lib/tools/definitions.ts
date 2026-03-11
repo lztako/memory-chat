@@ -90,7 +90,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        taskId: { type: "string", description: "ID ของ task ที่ต้องการอัปเดต (ได้จาก list_tasks)" },
+        taskId: { type: "string", description: "ID ของ task ที่ต้องการอัปเดต — ดูได้จาก system prompt section 'Tasks ที่ยังค้างอยู่'" },
         title: { type: "string", description: "แก้ไข title" },
         status: {
           type: "string",
@@ -110,7 +110,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "list_tasks",
     description:
-      "ดู tasks ทั้งหมด หรือกรองตาม status / overdue / upcoming — ใช้เมื่อ user ถามว่า 'มีอะไรต้องทำบ้าง', 'งานที่ค้างอยู่มีอะไร', 'due วันนี้มีอะไร'",
+      "Refresh รายการ tasks ล่าสุดจาก DB หรือดู tasks ที่กรองตาม status/overdue/upcoming — tasks ที่ active อยู่ดูได้จาก system prompt section 'Tasks ที่ยังค้างอยู่' โดยตรง ใช้ tool นี้เมื่อต้องการดู tasks ที่ done/cancelled หรือ filter พิเศษที่ไม่มีใน system prompt",
     input_schema: {
       type: "object",
       properties: {
@@ -157,7 +157,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "list_user_files",
     description:
-      "แสดงรายการไฟล์ CSV ที่ user upload ไว้ พร้อม id, ชื่อไฟล์, fileType, description, columns, และจำนวน rows — ใช้ก่อน query_user_file เพื่อดูว่ามีไฟล์อะไรบ้าง กรองตาม fileType ได้",
+      "Refresh รายการไฟล์ล่าสุดจาก DB — ใช้เฉพาะเมื่อ user เพิ่งอัปโหลดไฟล์ใหม่ในแชทนี้และต้องการดู id ของไฟล์นั้น ไฟล์ที่มีอยู่ก่อนหน้าดูได้จาก system prompt section 'ไฟล์ข้อมูลของ user' โดยตรง ไม่ต้องเรียก tool นี้",
     input_schema: {
       type: "object",
       properties: {

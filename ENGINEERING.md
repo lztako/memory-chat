@@ -158,12 +158,19 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 ## 8. Current Roadmap (Now / Next / Later)
 
 ### NOW
-- [ ] Tier 3: pgvector semantic memory (appetite: M)
+- (ว่าง — เลือก item จาก NEXT)
+
+### DONE (ล่าสุด)
+- [x] Tier 3: pgvector semantic memory — Voyage AI voyage-3-lite, HNSW indexes, graceful fallback
+- [x] Production login fix — Supabase redirect URL เพิ่มแล้ว
+- [x] CRON_SECRET + ADMIN_SECRET — set บน Vercel แล้ว
+- [x] Memory deduplication on write — cosine distance < 0.15 → update แทน create
+- [x] Admin UI Phase 1 — backend: GET /api/admin/users, GET/POST /api/admin/users/[id]/{files,config}
+- [x] Admin UI Phase 2 — frontend: /admin (users list + user detail tabs + upload modal + widget config editor)
 
 ### NEXT
-- [ ] Memory deduplication on write
-- [ ] Production login fix (Supabase redirect URL)
-- [ ] CRON_SECRET + ADMIN_SECRET setup บน Vercel
+- [ ] Admin UI — File Versioning (upload ทับ fileId เดิมได้)
+- [ ] Agent Layer — UserAgent table, per-company agents (Phase 3)
 
 ### LATER
 - ดูเพิ่มเติมใน `IDEAS.md` และ `CLAUDE.md` → Roadmap section

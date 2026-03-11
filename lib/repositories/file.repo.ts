@@ -23,6 +23,14 @@ export const fileRepo = {
     })
   },
 
+  async listSummaryByUser(userId: string) {
+    return prisma.userFile.findMany({
+      where: { userId },
+      select: { id: true, fileName: true, fileType: true, description: true, rowCount: true, columns: true },
+      orderBy: { createdAt: "desc" },
+    })
+  },
+
   async getById(id: string, userId: string) {
     return prisma.userFile.findFirst({ where: { id, userId } })
   },
