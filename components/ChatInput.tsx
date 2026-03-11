@@ -152,6 +152,14 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, folderHandle,
   const [textAttachments, setTextAttachments] = useState<TextAttachment[]>(
     initialTextAttachments as TextAttachment[]
   )
+
+  // Sync when parent loads staged attachments async (empty-state → chat page handoff)
+  useEffect(() => {
+    if (initialTextAttachments.length > 0) {
+      setTextAttachments(initialTextAttachments as TextAttachment[])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTextAttachments.length])
   const [imageAttachments, setImageAttachments] = useState<ImageAttachment[]>([])
   const [skills, setSkills] = useState<Skill[]>([])
   const [slashOpen, setSlashOpen] = useState(false)

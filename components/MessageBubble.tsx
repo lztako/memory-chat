@@ -35,7 +35,16 @@ export function MessageBubble({ role, content, isStreaming }: Props) {
           <span style={{ whiteSpace: "pre-wrap", color: "var(--text)" }}>{content}</span>
         ) : content ? (
           <div className="markdown-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({ children }) => (
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "0.5em 0" }}>
+                    <table style={{ margin: 0 }}>{children}</table>
+                  </div>
+                ),
+              }}
+            >{content}</ReactMarkdown>
           </div>
         ) : isStreaming ? (
           <span className="thinking-text">Thinking</span>

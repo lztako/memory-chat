@@ -19,6 +19,7 @@ model User {
   tokenUsage     TokenUsage[]
   tradeData      UserTradeData[]
   dashboard      UserDashboard?
+  agents         UserAgent[]
   createdAt      DateTime        @default(now())
 }
 
@@ -156,6 +157,23 @@ model TokenUsage {
 
   @@unique([userId, date])
   @@index([userId])
+}
+
+model UserAgent {
+  id           String   @id @default(cuid())
+  userId       String?  // null = global agent (ทุก user ใช้ได้)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  description  String
+  systemPrompt String   @db.Text
+  tools        String[]
+  model        String   @default("claude-haiku-4-5-20251001")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@unique([userId, name]) // ป้องกัน duplicate name ต่อ user (null userId = global)
 }
 
 model ConversationContext {

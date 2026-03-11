@@ -293,6 +293,31 @@ export const toolDefinitions: Anthropic.Tool[] = [
       required: ["type", "title", "data"],
     },
   },
+  {
+    name: "use_agent",
+    description:
+      "เรียก specialist sub-agent เพื่อทำงานเฉพาะด้าน — ใช้เมื่อ task ต้องการ data หรือ expertise ที่ agent นั้นเชี่ยวชาญ\n" +
+      "Agents ที่มี: 'Trade Data Analyst' (ข้อมูลตลาด Tendata), 'File Processor' (วิเคราะห์ไฟล์ CSV ของ user), 'Task Manager' (สร้าง/จัดการ tasks)\n" +
+      "ไม่เรียกเมื่อ: ตอบได้โดยไม่ต้องดึงข้อมูลใหม่, คำถาม conceptual, synthesis จากข้อมูลที่มีอยู่แล้ว",
+    input_schema: {
+      type: "object",
+      properties: {
+        agentName: {
+          type: "string",
+          description: "ชื่อ agent เช่น 'Trade Data Analyst', 'File Processor', 'Task Manager'",
+        },
+        task: {
+          type: "string",
+          description: "งานที่ต้องการให้ agent ทำ — อธิบายให้ชัดเจนพอที่ agent ทำได้โดยไม่ต้องถามกลับ",
+        },
+        context: {
+          type: "string",
+          description: "ข้อมูล context เพิ่มเติมจากการสนทนา เช่น สินค้า SKU, ประเทศที่สนใจ, ชื่อไฟล์ที่เกี่ยวข้อง (optional)",
+        },
+      },
+      required: ["agentName", "task"],
+    },
+  },
 ]
 
 // ─── Local Folder Tools (Phase 3B — client-side execution, not yet in API call) ──
