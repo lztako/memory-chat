@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       where: { id: userId },
       include: {
         files: {
-          select: { id: true, fileName: true, fileType: true, description: true, rowCount: true, columns: true, createdAt: true },
+          select: { id: true, fileName: true, fileType: true, description: true, rowCount: true, columns: true, size: true, createdAt: true, updatedAt: true },
           orderBy: { createdAt: "desc" },
         },
         skills: {

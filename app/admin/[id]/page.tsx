@@ -4,13 +4,14 @@ import { useEffect, useState, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAdminAuth } from "../layout"
 import { UserGraphView } from "@/components/admin/UserGraphView"
+import { FileBrowser } from "@/components/admin/FileBrowser"
 
 type UserDetail = {
   id: string
   email: string
   name: string | null
   createdAt: string
-  files: { id: string; fileName: string; fileType: string; description: string | null; rowCount: number; columns: string[]; createdAt: string }[]
+  files: { id: string; fileName: string; fileType: string; description: string | null; rowCount: number; columns: string[]; size: number; createdAt: string; updatedAt: string }[]
   skills: { id: string; name: string; trigger: string; solution: string; tools: string[]; usageCount: number; createdAt: string }[]
   memories: { id: string; type: string; content: string; importance: number; layer: string; createdAt: string }[]
   tasks: { id: string; title: string; status: string; priority: string; dueDate: string | null; linkedCompany: string | null; createdAt: string }[]
@@ -94,6 +95,40 @@ export default function AdminUserDetailPage() {
     } finally {
       setReplacing(false)
     }
+  }
+
+  async function handleDelete(fileId: string): Promise<void> {
+    const r = await fetch(`/api/admin/users/${userId}/files/${fileId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${secret}` },
+    })
+    if (!r.ok) throw new Error("Delete failed")
+    await load()
+  }
+
+  function handleDownload(file: { id: string; fileName: string }) {
+    // Fetch full file data then export as CSV
+    fetch(`/api/admin/users/${userId}/files/${file.id}/data`, {
+      headers: { Authorization: `Bearer ${secret}` },
+    })
+      .then(r => r.ok ? r.json() : Promise.reject("Failed"))
+      .then(({ data, columns }: { data: Record<string, unknown>[]; columns: string[] }) => {
+        if (!data?.length) return
+        const header = columns.join(",")
+        const rows = data.map(row => columns.map(c => {
+          const v = String(row[c] ?? "")
+          return v.includes(",") || v.includes('"') || v.includes("\n") || v.includes("\r")
+            ? `"${v.replace(/"/g, '""')}"` : v
+        }).join(","))
+        const csv = [header, ...rows].join("\n")
+        const blob = new Blob([csv], { type: "text/csv" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url; a.download = file.fileName.replace(/\.[^.]+$/, "") + ".csv"
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 100)
+      })
+      .catch(() => alert("Download failed"))
   }
 
   // Widget config state
@@ -396,45 +431,13 @@ export default function AdminUserDetailPage() {
             </div>
           )}
 
-          <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            {user.files.length === 0 ? (
-              <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No files</div>
-            ) : user.files.map((f, i) => (
-              <div key={f.id} style={{
-                padding: "12px 16px",
-                borderBottom: i < user.files.length - 1 ? "1px solid var(--border)" : "none",
-                display: "flex", alignItems: "flex-start", gap: 12,
-              }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", marginBottom: 3 }}>{f.fileName}</div>
-                  {f.description && <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>{f.description}</div>}
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 7px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text2)" }}>{f.fileType}</span>
-                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 7px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>{f.rowCount} rows</span>
-                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 7px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>{f.columns.length} cols</span>
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", color: "var(--text3)", whiteSpace: "nowrap" }}>
-                    {new Date(f.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                  </span>
-                  <button
-                    onClick={() => setReplacingFileId(f.id)}
-                    title="Replace file content (keeps same fileId)"
-                    style={{
-                      fontSize: 10, padding: "3px 8px",
-                      border: "1px solid var(--border)", borderRadius: 4,
-                      background: "none", color: "var(--text3)", cursor: "pointer",
-                      fontFamily: "var(--font-ibm-plex-sans), sans-serif",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Replace
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <FileBrowser
+            files={user.files}
+            onReplace={setReplacingFileId}
+            onDelete={handleDelete}
+            onDownload={handleDownload}
+          />
+
         </div>
       )}
 

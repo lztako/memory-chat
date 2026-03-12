@@ -157,10 +157,47 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 
 ## 8. Current Roadmap (Now / Next / Later)
 
-### NOW
-- (ว่าง — เลือก item จาก NEXT)
+### NOW (2026-03-12)
+
+**Ops 1 — Brief analysis** ✅ (วิเคราะห์แล้ว 2026-03-12)
+- [x] อ่านและสรุป brief จากหัวหน้า (`trr/raw/brief-2026-03-12.txt`)
+
+**Ops 2 — TRR Account** ⏳ รอข้อมูลใหม่ช่วงเที่ยง (2026-03-12)
+- [ ] สร้าง user account สำหรับ TRR Group (ไทยรุ่งเรือง)
+- [ ] Clean data ไฟล์ใหม่ — known issues ที่ต้องเช็ค:
+  - ชื่อลูกค้าไม่ consistent ข้ามชีต (สั้น vs เต็ม เช่น "Wilmar" vs "Wilmar Trading")
+  - Invoice No. มีเว้นวรรคหรือ format ต่างกัน (เช่น "CW001/69" vs "CW 001/69")
+  - รูปแบบวันที่ไม่ตรงกัน (dd/mm/yyyy vs yyyy-mm-dd vs พ.ศ.)
+  - Header row อาจอยู่คนละ row ต่างชีต (เหมือนไฟล์เก่า)
+- [ ] Upload ไฟล์ที่ clean แล้วเข้า account TRR
+
+**Ops 3 — Clean Data .xlsx (TRR)** ✅ เสร็จแล้ว
+- [x] Clean Container Truck + Conventional monitoring 2026
+- [x] Merge → 162 rows, 9 columns (invoice, customer, contract, destination, crop_year, volume_mt, etd, loading_date, vessel_name)
+- [x] มกราคม 2026 ส่งทั้งหมด 6,137 MT จาก 36 shipments
+
+**Feature 1 — Global Info (Origo identity)** ✅ เสร็จแล้ว (2026-03-12)
+- [x] `GlobalInfo` table — key/value rows, unique key, sortOrder
+- [x] `lib/repositories/globalInfo.repo.ts` — list, upsert, update, delete
+- [x] `GET/POST /api/admin/global-info` + `PATCH/DELETE /api/admin/global-info/[id]`
+- [x] Inject ก่อน user memory ใน system prompt (`buildGlobalInfoSection()`)
+- [x] AI identity เปลี่ยนเป็น "Origo AI" (ไม่ใช่ generic AI)
+- [x] Admin UI `/admin/global` — list + inline edit + add + delete + seed defaults + preview
+- [x] Admin topbar — Users / Global Info nav links
+
+**Feature 2 — Admin File Browser** ✅ เสร็จแล้ว (2026-03-12)
+- [x] `components/admin/FileBrowser.tsx` — tree view group by fileType, collapse/expand, Replace/Download/Delete
+- [x] `DELETE /api/admin/users/[id]/files/[fileId]` — admin delete endpoint
+- [x] `GET /api/admin/users/[id]/files/[fileId]/data` — download endpoint
+- [x] แสดง size, updatedAt, createdAt, rowCount, cols ต่อไฟล์
+
+**Feature 3 — Resources folder (จาก brief — NEXT cycle)**
+จาก brief: folder "resources" ต่อ user → AI อ่านเอง → เขียน workflow เป็น markdown
+- [ ] ยัง backlog — รอ Global Info + File Browser เสร็จก่อน
 
 ### DONE (ล่าสุด)
+- [x] Global Info — Origo identity inject ทุก account · GlobalInfo table · Admin UI /admin/global · seed defaults
+- [x] Admin File Browser — tree view by fileType · Replace/Download/Delete · FileBrowser.tsx
 - [x] Tier 3: pgvector semantic memory — Voyage AI voyage-3-lite, HNSW indexes, graceful fallback
 - [x] Production login fix — Supabase redirect URL เพิ่มแล้ว
 - [x] CRON_SECRET + ADMIN_SECRET — set บน Vercel แล้ว

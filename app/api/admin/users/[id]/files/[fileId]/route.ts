@@ -11,6 +11,19 @@ function checkAuth(req: Request) {
   return auth === `Bearer ${process.env.ADMIN_SECRET}`
 }
 
+// DELETE /api/admin/users/[id]/files/[fileId] — delete file
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; fileId: string }> }
+) {
+  if (!checkAuth(req)) return new Response("Unauthorized", { status: 401 })
+  const { id: userId, fileId } = await params
+  const existing = await prisma.userFile.findFirst({ where: { id: fileId, userId } })
+  if (!existing) return Response.json({ error: "ไม่พบไฟล์" }, { status: 404 })
+  await fileRepo.delete(fileId, userId)
+  return Response.json({ success: true })
+}
+
 // PUT /api/admin/users/[id]/files/[fileId] — replace file content (keeps same fileId)
 export async function PUT(
   req: NextRequest,

@@ -1,5 +1,10 @@
 import type { Memory } from "../types"
 
+type GlobalInfoItem = {
+  key: string
+  value: string
+}
+
 type UserConfig = {
   content: string
 }
@@ -43,6 +48,12 @@ export function getSkillTools(skills: UserSkill[], message: string): string[] {
     }
   }
   return Array.from(toolSet)
+}
+
+function buildGlobalInfoSection(items: GlobalInfoItem[]): string {
+  if (items.length === 0) return ""
+  const lines = items.map((i) => `- ${i.key}: ${i.value}`)
+  return `\n\n## เกี่ยวกับ Origo (บริษัทที่ให้บริการระบบนี้):\n${lines.join("\n")}`
 }
 
 function buildUserConfigSection(configs: UserConfig[]): string {
@@ -160,7 +171,7 @@ function buildReminderSection(tasks: ReminderTask[]): string {
   return lines.join("\n")
 }
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = [], message = "", attachedFiles: AttachedFileSummary[] = [], skillsPreFiltered = false, userFiles: UserFileSummary[] = [], activeTasks: ActiveTask[] = []): string {
+export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = [], message = "", attachedFiles: AttachedFileSummary[] = [], skillsPreFiltered = false, userFiles: UserFileSummary[] = [], activeTasks: ActiveTask[] = [], globalInfo: GlobalInfoItem[] = []): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -178,6 +189,7 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
     weekday: "long",
   })
 
+  const globalInfoSection = buildGlobalInfoSection(globalInfo)
   const reminderSection = buildReminderSection(reminderTasks)
   const userConfigSection = buildUserConfigSection(userConfig)
   // When skills are semantically pre-filtered, skip keyword filter
@@ -189,9 +201,8 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
   const userFilesSection = buildUserFilesSection(userFiles)
   const activeTasksSection = buildActiveTasksSection(activeTasks)
 
-  return `You are a personal AI assistant for import/export professionals.
-วันนี้คือ ${today}
-
+  return `You are Origo AI — AI ผู้ช่วยด้านการนำเข้า-ส่งออกจาก Origo
+วันนี้คือ ${today}${globalInfoSection}
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
 ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSection}${activeTasksSection}${userFilesSection}${attachedFilesSection}

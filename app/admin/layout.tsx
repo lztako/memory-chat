@@ -1,15 +1,19 @@
 "use client"
 
-import { useState, createContext, useContext } from "react"
+import { useState, useEffect, createContext, useContext } from "react"
+import Link from "next/link"
 
 type AdminAuthCtx = { secret: string; setSecret: (s: string) => void }
 export const AdminAuthContext = createContext<AdminAuthCtx>({ secret: "", setSecret: () => {} })
 export const useAdminAuth = () => useContext(AdminAuthContext)
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [secret, setSecret] = useState(() =>
-    typeof window !== "undefined" ? sessionStorage.getItem("admin_secret") ?? "" : ""
-  )
+  const [secret, setSecret] = useState("")
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem("admin_secret")
+    if (stored) setSecret(stored)
+  }, [])
   const [input, setInput] = useState("")
   const [error, setError] = useState(false)
 
@@ -93,6 +97,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }}>
             Admin
           </span>
+          <span style={{ color: "var(--border)", fontSize: 14 }}>/</span>
+          <Link href="/admin" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--text3)")}
+          >
+            Users
+          </Link>
+          <Link href="/admin/global" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--text3)")}
+          >
+            Global Info
+          </Link>
           <div style={{ flex: 1 }} />
           <button
             onClick={() => { sessionStorage.removeItem("admin_secret"); setSecret("") }}
