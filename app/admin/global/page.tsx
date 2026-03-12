@@ -89,21 +89,30 @@ export default function GlobalInfoPage() {
   }
 
   async function handleSave(id: string) {
+    if (!editKey.trim() || !editValue.trim()) return
     setSaving(true)
-    await fetch(`/api/admin/global-info/${id}`, {
-      method: "PATCH",
-      headers: { ...authHeader, "Content-Type": "application/json" },
-      body: JSON.stringify({ key: editKey, value: editValue }),
-    })
-    await fetchItems()
-    cancelEdit()
-    setSaving(false)
+    try {
+      const res = await fetch(`/api/admin/global-info/${id}`, {
+        method: "PATCH",
+        headers: { ...authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ key: editKey.trim(), value: editValue.trim() }),
+      })
+      if (!res.ok) throw new Error("Save failed")
+      await fetchItems()
+      cancelEdit()
+    } catch {
+      // keep edit form open so user can retry
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/admin/global-info/${id}`, { method: "DELETE", headers: authHeader })
-    setItems(prev => prev.filter(i => i.id !== id))
-    setConfirmDeleteId(null)
+    const res = await fetch(`/api/admin/global-info/${id}`, { method: "DELETE", headers: authHeader })
+    if (res.ok) {
+      setItems(prev => prev.filter(i => i.id !== id))
+      setConfirmDeleteId(null)
+    }
   }
 
   async function handleAdd(e: React.FormEvent) {
