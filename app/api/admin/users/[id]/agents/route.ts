@@ -1,9 +1,5 @@
 import { agentRepo } from "@/lib/repositories/agent.repo"
-
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization")
-  return auth === `Bearer ${process.env.ADMIN_SECRET}`
-}
+import { checkAuth } from "@/lib/admin/auth"
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!checkAuth(req)) return new Response("Unauthorized", { status: 401 })

@@ -191,9 +191,31 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] `GET /api/admin/users/[id]/files/[fileId]/data` — download endpoint
 - [x] แสดง size, updatedAt, createdAt, rowCount, cols ต่อไฟล์
 
-**Feature 3 — Resources folder (จาก brief — NEXT cycle)**
-จาก brief: folder "resources" ต่อ user → AI อ่านเอง → เขียน workflow เป็น markdown
-- [ ] ยัง backlog — รอ Global Info + File Browser เสร็จก่อน
+**Feature 3 — Document Layer: UserDoc + GlobalDoc + Resources** (NEXT cycle)
+> Design เต็มอยู่ที่ `~/.claude/projects/.../memory/project_doc_layer_architecture.md`
+
+แนวคิดหลัก (brainstorm 2026-03-12): ใช้ Claude Code skill structure เป็น model
+- inject แค่ "index" (~50 tokens) ทุก request
+- fetch เนื้อหาจริง on-demand ผ่าน `read_resource` tool
+- **table เดียว** `UserDoc` ครอบทั้ง skill sub-docs + agent sub-docs + resources
+
+> **MCP validates this design (2026-03-12):** pattern "inject index only → fetch on-demand" คือสิ่งที่ MCP Resources ทำ verbatim — เราไม่ได้ reinvent แต่ implement มันเองใน web context ซึ่ง Anthropic API ยังไม่ support MCP natively เหมือน Claude Code CLI
+
+Build order (เรียงตาม dependency):
+- [ ] `UserDoc` table — id, userId, parentId, parentType, docType, title, content, embedding
+- [ ] `read_resource` tool — definitions + handlers + repo
+- [ ] Resources index inject ใน `buildSystemPrompt` (~50 tokens)
+- [ ] Admin UI — upload/manage resource docs ต่อ user
+- [ ] `GlobalDoc` table + `read_global_doc` tool (Origo knowledge base ทุก user)
+- [ ] Feedback loop — resource upload → AI generate workflow → `save_skill` อัตโนมัติ
+- [ ] UserGraphView — เพิ่ม Resources spoke
+- [ ] Skill sub-docs (reference.md, examples) ผ่าน UserDoc
+- [ ] Agent sub-docs ผ่าน UserDoc
+
+No-gos (รอบนี้):
+- ไม่ทำ versioning/history ของ docs
+- ไม่ให้ลูกค้า upload เอง — Origo เท่านั้น
+- ไม่ทำ custom sub-agent creation ยัง (รอ brainstorm รอบถัดไป)
 
 ### DONE (ล่าสุด)
 - [x] Global Info — Origo identity inject ทุก account · GlobalInfo table · Admin UI /admin/global · seed defaults
@@ -210,10 +232,37 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] Agent Layer — UserAgent table · use_agent tool (isolated Haiku loop) · seed 3 global agents · Admin UI Agents tab · UserGraphView 5th spoke (purple) · ADR-006
 
 ### NEXT
-- (ว่าง — เลือก item จาก LATER หรือรอ forcing function)
+- **Feature 3 — Document Layer** (UserDoc + GlobalDoc + Resources) — design พร้อมแล้ว รอ start
+- **Agent Teams + Custom Sub-agents** — design พร้อมแล้ว (2026-03-12)
+  - Full design: `~/.claude/projects/.../memory/project_agent_architecture.md`
+  - Subagent gaps: maxTurns configurable, memory (UserDoc), skills[] preload, hooks
+  - **Hooks**: `UserAgent.hooks` field + PreToolUse check ใน use_agent loop
+    - http hook → POST /api/hooks/pre-tool-use (native Next.js pattern)
+    - prompt hook → Haiku judge ok/false (เหมือน extract.ts)
+    - events: PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStart/Stop
+  - Agent Teams: shared task list + mailbox + use_agent_team (รอ design ชัดขึ้น)
+  - Full build order (item 1-16): `~/.claude/projects/.../memory/project_agent_architecture.md`
 
 ### LATER
 - ดูเพิ่มเติมใน `IDEAS.md` และ `CLAUDE.md` → Roadmap section
+- **Tendata + Memory as MCP server** — expose เป็น MCP server เพื่อให้ Claude Code CLI / future products ใช้ได้ (ตอนนี้ไม่จำเป็น เพราะ app เราควบคุม Tendata เองอยู่แล้ว)
+- **`.mcp.json` project scope** — commit MCP server configs (supabase, github, context7) ลง repo เพื่อให้ทุกคนใน team ได้ toolset เดียวกัน (S appetite, no-brainer เมื่อมี team)
+
+**Tech Debt (จาก Global Info review — 2026-03-12)** ✅ Done 2026-03-12
+- [x] `checkAuth` → extract `lib/admin/auth.ts` (12 admin routes)
+- [x] `buildSystemPrompt` 11 positional args → `BuildSystemPromptOptions` object
+- [x] `globalInfoRepo.list()` → in-memory cache 5 min + invalidate on write
+
+**Tech Debt (จาก headless/programmatic usage review — 2026-03-12)**
+- [ ] `session_id` — extract จาก API response → store ใน Conversation table (enable resumption)
+- [ ] Parallel read-only tools ใน `handlers.ts` — tools ที่ไม่ depend กัน รันพร้อมกันได้
+- [ ] `eager_input_streaming` บน Tendata tool definitions — ⚠️ verify SDK support ก่อน
+
+**Tech Debt (จาก MCP + memory system review — 2026-03-12)**
+- [ ] `buildSystemPrompt` ไม่มี token budget — prompt โตได้ไม่จำกัด (files + skills + memories รวมกัน); ref: MCP Tool Search auto-triggers เมื่อ tools > 10% context — เราควรทำแบบเดียวกัน (truncate/skip ถ้า budget เกิน)
+- [ ] `extract.ts` เรียก Haiku 2 รอบต่อ conversation (analyze + layer validation) → รวมเป็น 1 prompt เดียวได้ ลด latency + cost
+- [ ] Skill injection ใช้ keyword matching ล้วน → false negative สูง; semantic path มีแล้ว (`listByUserSemantic`) แต่ไม่ได้ใช้เป็น default ใน inject.ts
+- [ ] `handlers.ts` + `definitions.ts` โตแบบ monolith → แตกเป็น domain files: `tendata.ts`, `memory.ts`, `tasks.ts`, `files.ts`
 
 ---
 
@@ -227,6 +276,7 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 | [004](docs/adr/ADR-004-tendata-architecture.md) | Tendata backend-only via UserTradeData | Accepted | 2026-03-10 |
 | [005](docs/adr/ADR-005-pgvector-semantic-memory.md) | pgvector semantic memory search | Accepted | 2026-03-10 |
 | [006](docs/adr/ADR-006-agent-layer.md) | Agent Layer — per-user sub-agents (Claude Code in web) | Accepted | 2026-03-11 |
+| [007](docs/adr/ADR-007-userdoc-single-table.md) | UserDoc single table สำหรับ skill/agent sub-docs + resources | Accepted | 2026-03-12 |
 
 ---
 

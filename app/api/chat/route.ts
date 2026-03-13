@@ -15,6 +15,8 @@ import { skillRepo } from "@/lib/repositories/skill.repo"
 import { fileRepo } from "@/lib/repositories/file.repo"
 import { getAttachedFiles } from "@/lib/session/attached-files"
 import { globalInfoRepo } from "@/lib/repositories/globalInfo.repo"
+import { userDocRepo } from "@/lib/repositories/userDoc.repo"
+import { globalDocRepo } from "@/lib/repositories/globalDoc.repo"
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Conversation not found" }), { status: 404 })
   }
 
-  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks, skills, userFiles, activeTasks, globalInfo] = await Promise.all([
+  const [{ longTerm, dailyLog, userConfig }, dbMessages, reminderTasks, skills, userFiles, activeTasks, globalInfo, resources, globalDocs] = await Promise.all([
     memoryRepo.getForInjectionSemantic(USER_ID, message),
     conversationRepo.getMessages(conversationId),
     taskRepo.getReminders(USER_ID),
@@ -49,6 +51,8 @@ export async function POST(req: Request) {
     fileRepo.listSummaryByUser(USER_ID),
     taskRepo.listActive(USER_ID),
     globalInfoRepo.list(),
+    userDocRepo.listIndex(USER_ID, 'resource'),
+    globalDocRepo.listIndex(),
   ])
 
   const attachedFiles = getAttachedFiles(conversationId)
@@ -59,7 +63,10 @@ export async function POST(req: Request) {
     content: message,
   })
 
-  const systemPrompt = buildSystemPrompt(longTerm, dailyLog, reminderTasks, userConfig, skills, message, attachedFiles, true, userFiles, activeTasks, globalInfo)
+  const systemPrompt = buildSystemPrompt({
+    longTerm, dailyLog, reminderTasks, userConfig, skills, message,
+    attachedFiles, skillsPreFiltered: true, userFiles, activeTasks, globalInfo, resources, globalDocs,
+  })
 
   // Build enriched user message — append folder context if available
   let enrichedMessage = message

@@ -1,9 +1,5 @@
 import { globalInfoRepo } from "@/lib/repositories/globalInfo.repo"
-
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization")
-  return auth === `Bearer ${process.env.ADMIN_SECRET}`
-}
+import { checkAuth } from "@/lib/admin/auth"
 
 // GET /api/admin/global-info — list all entries
 export async function GET(req: Request) {

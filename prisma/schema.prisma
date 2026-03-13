@@ -20,6 +20,7 @@ model User {
   tradeData      UserTradeData[]
   dashboard      UserDashboard?
   agents         UserAgent[]
+  docs           UserDoc[]
   createdAt      DateTime        @default(now())
 }
 
@@ -168,12 +169,31 @@ model UserAgent {
   systemPrompt String   @db.Text
   tools        String[]
   model        String   @default("claude-haiku-4-5-20251001")
+  maxTurns     Int      @default(5)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([userId])
   @@unique([userId, name]) // ป้องกัน duplicate name ต่อ user (null userId = global)
+}
+
+model UserDoc {
+  id         String                      @id @default(cuid())
+  userId     String
+  user       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId   String?                     // FK → UserSkill.id หรือ UserAgent.id (null สำหรับ resource)
+  parentType String                      // "skill" | "agent" | "resource"
+  docType    String                      // "reference" | "example" | "workflow" | "overview" | "contact" | "product"
+  title      String
+  content    String                      @db.Text
+  embedding  Unsupported("vector(512)")?
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
+
+  @@index([userId])
+  @@index([userId, parentType])
+  @@index([userId, parentId])
 }
 
 model GlobalInfo {
@@ -183,6 +203,19 @@ model GlobalInfo {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model GlobalDoc {
+  id        String   @id @default(cuid())
+  category  String   // "company" | "knowledge"
+  docType   String   // "overview" | "history" | "service" | "reference" | "workflow"
+  title     String
+  content   String   @db.Text
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
 }
 
 model ConversationContext {

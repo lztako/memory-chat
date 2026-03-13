@@ -8,6 +8,8 @@ import { taskRepo } from "@/lib/repositories/task.repo"
 import { skillRepo } from "@/lib/repositories/skill.repo"
 import { tradeDataRepo } from "@/lib/repositories/trade-data.repo"
 import { agentRepo } from "@/lib/repositories/agent.repo"
+import { userDocRepo } from "@/lib/repositories/userDoc.repo"
+import { globalDocRepo } from "@/lib/repositories/globalDoc.repo"
 import { toolDefinitions } from "@/lib/tools/definitions"
 import { recordTokenUsage } from "@/lib/ai/token-usage"
 import { Prisma } from "@prisma/client"
@@ -204,6 +206,32 @@ export async function executeToolCall(
       }
     }
 
+    case "read_global_doc": {
+      const docId = toolInput.docId as string
+      const doc = await globalDocRepo.getContent(docId)
+      if (!doc) return { error: "ไม่พบ GlobalDoc กรุณาตรวจสอบ docId จาก system prompt" }
+      return {
+        id: doc.id,
+        title: doc.title,
+        category: doc.category,
+        docType: doc.docType,
+        content: doc.content,
+      }
+    }
+
+    case "read_resource": {
+      const docId = toolInput.docId as string
+      const doc = await userDocRepo.getContent(userId, docId)
+      if (!doc) return { error: "ไม่พบ resource กรุณาตรวจสอบ docId จาก system prompt" }
+      return {
+        id: doc.id,
+        title: doc.title,
+        docType: doc.docType,
+        parentType: doc.parentType,
+        content: doc.content,
+      }
+    }
+
     case "use_agent": {
       const agentName = toolInput.agentName as string
       const task = toolInput.task as string
@@ -218,19 +246,32 @@ export async function executeToolCall(
       // 2. กรอง tools เฉพาะที่ agent นี้ใช้ได้
       const agentTools = toolDefinitions.filter(t => agent.tools.includes(t.name))
 
-      // 3. สร้าง isolated message thread
+      // 3. Preload user skills + agent memory docs — inject เข้า agent system prompt
+      const [userSkills, agentDocs] = await Promise.all([
+        skillRepo.listByUser(userId),
+        agent.id ? userDocRepo.listByParent(userId, agent.id) : Promise.resolve([]),
+      ])
+      const skillsText = userSkills.length > 0
+        ? `\n\n## User Skills (patterns ที่เรียนรู้จาก user นี้):\n${userSkills.slice(0, 10).map(s => `- [${s.name}] เมื่อ: ${s.trigger} → ${s.solution}`).join("\n")}`
+        : ""
+      const agentDocsText = agentDocs.length > 0
+        ? `\n\n## Agent Memory (เอกสารที่บันทึกไว้สำหรับ agent นี้):\n${agentDocs.map(d => `### ${d.title} [${d.docType}]\n${d.content}`).join("\n\n")}`
+        : ""
+      const agentSystemPrompt = agent.systemPrompt + skillsText + agentDocsText
+
+      // 4. สร้าง isolated message thread
       const agentMessages: Anthropic.MessageParam[] = [
         { role: "user", content: context ? `${task}\n\nContext: ${context}` : task },
       ]
 
       let result = ""
-      const MAX_AGENT_ITERATIONS = 5
+      const maxTurns = agent.maxTurns ?? 5
 
-      for (let i = 0; i < MAX_AGENT_ITERATIONS; i++) {
+      for (let i = 0; i < maxTurns; i++) {
         const response = await anthropic.messages.create({
           model: agent.model,
           max_tokens: 1024,
-          system: agent.systemPrompt,
+          system: agentSystemPrompt,
           messages: agentMessages,
           ...(agentTools.length > 0 && {
             tools: agentTools,

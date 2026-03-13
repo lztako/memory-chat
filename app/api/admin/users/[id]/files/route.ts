@@ -1,14 +1,10 @@
 import { NextRequest } from "next/server"
 import Papa from "papaparse"
 import { fileRepo } from "@/lib/repositories/file.repo"
+import { checkAuth } from "@/lib/admin/auth"
 
 const MAX_ROWS = 500
 const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
-
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization")
-  return auth === `Bearer ${process.env.ADMIN_SECRET}`
-}
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!checkAuth(req)) return new Response("Unauthorized", { status: 401 })

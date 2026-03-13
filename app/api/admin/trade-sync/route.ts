@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { tradeDataRepo } from "@/lib/repositories/trade-data.repo"
 import { listTradeCompanies, rankTradeCompanies, queryTrade } from "@/lib/tendata/client"
 import { tendataUsageRepo } from "@/lib/repositories/tendata-usage.repo"
+import { checkAuth } from "@/lib/admin/auth"
 
 // Admin-only endpoint — protected by ADMIN_SECRET
 // Used by our team to pre-populate trade data for a specific user's SKU
@@ -20,10 +21,7 @@ const POINT_COST: Record<string, number> = {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get("authorization")
-  if (auth !== `Bearer ${process.env.ADMIN_SECRET}`) {
-    return new Response("Unauthorized", { status: 401 })
-  }
+  if (!checkAuth(req)) return new Response("Unauthorized", { status: 401 })
 
   if (!process.env.TENDATA_API_KEY) {
     return Response.json({ error: "TENDATA_API_KEY not configured" }, { status: 500 })

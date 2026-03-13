@@ -110,6 +110,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             Global Info
           </Link>
+          <Link href="/admin/global-docs" style={{ fontSize: 11, color: "var(--text3)", textDecoration: "none" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--text3)")}
+          >
+            Global Docs
+          </Link>
           <div style={{ flex: 1 }} />
           <button
             onClick={() => { sessionStorage.removeItem("admin_secret"); setSecret("") }}

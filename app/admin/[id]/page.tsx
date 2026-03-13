@@ -20,10 +20,10 @@ type UserDetail = {
 
 type AgentEntry = {
   id: string; name: string; description: string; systemPrompt: string
-  tools: string[]; model: string; isActive: boolean; createdAt: string
+  tools: string[]; model: string; maxTurns: number; isActive: boolean; createdAt: string
 }
 
-type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph" | "agents"
+type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph" | "agents" | "resources"
 const TABS: { key: Tab; label: string }[] = [
   { key: "graph", label: "Graph" },
   { key: "files", label: "Files" },
@@ -31,8 +31,16 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "skills", label: "Skills" },
   { key: "tasks", label: "Tasks" },
   { key: "agents", label: "Agents" },
+  { key: "resources", label: "Resources" },
   { key: "config", label: "Widget Config" },
 ]
+
+type ResourceDoc = {
+  id: string
+  title: string
+  docType: string
+  parentType: string
+}
 
 function SvgIcon({ d, size = 14 }: { d: string; size?: number }) {
   return (
@@ -50,6 +58,83 @@ const STATUS_COLOR: Record<string, string> = {
   done: "var(--green)", in_progress: "var(--blue)", pending: "var(--text3)", cancelled: "var(--text3)",
 }
 
+const DOC_TYPE_COLOR: Record<string, string> = {
+  overview: "var(--blue)",
+  contact: "var(--green)",
+  workflow: "var(--orange)",
+  product: "#a78bfa",
+  reference: "var(--text2)",
+  example: "var(--text3)",
+}
+
+function ResourceRow({ doc, last, onView, onDelete, loadingContent }: {
+  doc: ResourceDoc
+  last: boolean
+  onView: () => void
+  onDelete: () => void
+  loadingContent: boolean
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const color = DOC_TYPE_COLOR[doc.docType] ?? "var(--text3)"
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      padding: "11px 16px",
+      borderBottom: last ? "none" : "1px solid var(--border)",
+    }}>
+      {/* Color dot */}
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {doc.title}
+        </div>
+        <span style={{
+          fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
+          padding: "2px 6px", borderRadius: 3,
+          background: "var(--surface2)", border: "1px solid var(--border)",
+          color: color, display: "inline-block", marginTop: 4,
+        }}>{doc.docType}</span>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+        {confirmDelete ? (
+          <>
+            <span style={{ fontSize: 10, color: "var(--text3)" }}>Delete?</span>
+            <button onClick={onDelete} style={{
+              fontSize: 9, padding: "3px 8px", border: "1px solid var(--red)",
+              borderRadius: 4, background: "none", color: "var(--red)",
+              cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+            }}>Confirm</button>
+            <button onClick={() => setConfirmDelete(false)} style={{
+              fontSize: 9, padding: "3px 8px", border: "1px solid var(--border)",
+              borderRadius: 4, background: "none", color: "var(--text3)",
+              cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+            }}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button onClick={onView} disabled={loadingContent} style={{
+              fontSize: 9, padding: "3px 8px", border: "1px solid var(--border)",
+              borderRadius: 4, background: "none", color: "var(--text3)",
+              cursor: loadingContent ? "not-allowed" : "pointer", opacity: loadingContent ? 0.5 : 1,
+              fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+            }}>View</button>
+            <button onClick={() => setConfirmDelete(true)} style={{
+              fontSize: 9, padding: "3px 8px", border: "1px solid var(--border)",
+              borderRadius: 4, background: "none", color: "var(--red)",
+              cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+            }}>Delete</button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminUserDetailPage() {
   const { secret } = useAdminAuth()
   const router = useRouter()
@@ -58,9 +143,19 @@ export default function AdminUserDetailPage() {
 
   const [user, setUser] = useState<UserDetail | null>(null)
   const [agents, setAgents] = useState<{ global: AgentEntry[]; perUser: AgentEntry[] }>({ global: [], perUser: [] })
+  const [resources, setResources] = useState<ResourceDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("files")
+
+  // Resources state
+  const [showAddResource, setShowAddResource] = useState(false)
+  const [resourceTitle, setResourceTitle] = useState("")
+  const [resourceDocType, setResourceDocType] = useState("overview")
+  const [resourceContent, setResourceContent] = useState("")
+  const [savingResource, setSavingResource] = useState(false)
+  const [viewingDoc, setViewingDoc] = useState<{ title: string; content: string; docType: string } | null>(null)
+  const [loadingDocContent, setLoadingDocContent] = useState(false)
 
   // Upload modal state (new file)
   const [uploading, setUploading] = useState(false)
@@ -139,9 +234,10 @@ export default function AdminUserDetailPage() {
   async function load() {
     setLoading(true)
     try {
-      const [r, ar] = await Promise.all([
+      const [r, ar, rr] = await Promise.all([
         fetch(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${secret}` } }),
         fetch(`/api/admin/users/${userId}/agents`, { headers: { Authorization: `Bearer ${secret}` } }),
+        fetch(`/api/admin/users/${userId}/docs`, { headers: { Authorization: `Bearer ${secret}` } }),
       ])
       if (!r.ok) throw new Error(r.status === 401 ? "Unauthorized" : "Not found")
       const data = await r.json()
@@ -151,10 +247,58 @@ export default function AdminUserDetailPage() {
         const ad = await ar.json()
         setAgents({ global: ad.global ?? [], perUser: ad.perUser ?? [] })
       }
+      if (rr.ok) {
+        const rd = await rr.json()
+        setResources(rd.docs ?? [])
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleAddResource(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingResource(true)
+    try {
+      const r = await fetch(`/api/admin/users/${userId}/docs`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ title: resourceTitle, docType: resourceDocType, content: resourceContent }),
+      })
+      if (!r.ok) throw new Error("Save failed")
+      setShowAddResource(false)
+      setResourceTitle(""); setResourceDocType("overview"); setResourceContent("")
+      await load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Save failed")
+    } finally {
+      setSavingResource(false)
+    }
+  }
+
+  async function handleDeleteDoc(docId: string) {
+    await fetch(`/api/admin/users/${userId}/docs/${docId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${secret}` },
+    })
+    await load()
+  }
+
+  async function handleViewDoc(doc: ResourceDoc) {
+    setLoadingDocContent(true)
+    try {
+      const r = await fetch(`/api/admin/users/${userId}/docs/${doc.id}`, {
+        headers: { Authorization: `Bearer ${secret}` },
+      })
+      if (!r.ok) throw new Error("Load failed")
+      const { doc: full } = await r.json()
+      setViewingDoc({ title: full.title, content: full.content, docType: full.docType })
+    } catch {
+      alert("Failed to load content")
+    } finally {
+      setLoadingDocContent(false)
     }
   }
 
@@ -226,6 +370,7 @@ export default function AdminUserDetailPage() {
     skills: user.skills.length,
     tasks: user.tasks.length,
     agents: totalAgents,
+    resources: resources.length,
     config: user.dashboard?.widgets.length ?? 0,
   }
 
@@ -556,6 +701,9 @@ export default function AdminUserDetailPage() {
                     <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
                       {a.model.includes("haiku") ? "haiku" : a.model.includes("sonnet") ? "sonnet" : a.model}
                     </span>
+                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
+                      max {a.maxTurns ?? 5} turns
+                    </span>
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6, lineHeight: 1.5 }}>{a.description.split(".")[0]}.</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -591,6 +739,9 @@ export default function AdminUserDetailPage() {
                         background: "var(--surface2)", border: "1px solid var(--border)",
                         color: a.isActive ? "var(--green)" : "var(--text3)",
                       }}>{a.isActive ? "active" : "inactive"}</span>
+                      <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
+                        max {a.maxTurns ?? 5} turns
+                      </span>
                     </div>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       {a.tools.map(t => (
@@ -619,6 +770,176 @@ export default function AdminUserDetailPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESOURCES TAB */}
+      {tab === "resources" && (
+        <div>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)" }}>
+              Company knowledge — injected as index ~50 tok per request
+            </div>
+            <button
+              onClick={() => setShowAddResource(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                background: "var(--text)", color: "var(--bg)",
+                border: "none", borderRadius: 6, padding: "6px 14px",
+                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+              }}
+            >
+              <SvgIcon d="M12 5v14M5 12l7-7 7 7" size={12} />
+              Add resource
+            </button>
+          </div>
+
+          {/* View content modal */}
+          {viewingDoc && (
+            <div style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,.65)",
+              display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200,
+            }}
+              onClick={() => setViewingDoc(null)}
+            >
+              <div
+                style={{
+                  background: "var(--surface)", border: "1.5px solid var(--border)",
+                  borderRadius: 12, width: 640, maxHeight: "80vh",
+                  display: "flex", flexDirection: "column",
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{
+                  padding: "16px 20px", borderBottom: "1px solid var(--border)",
+                  display: "flex", alignItems: "center", gap: 10,
+                }}>
+                  <span style={{
+                    fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
+                    padding: "2px 7px", borderRadius: 3,
+                    background: "var(--surface2)", border: "1px solid var(--border)",
+                    color: "var(--text3)", textTransform: "uppercase", letterSpacing: ".05em",
+                  }}>{viewingDoc.docType}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", flex: 1 }}>{viewingDoc.title}</span>
+                  <button
+                    onClick={() => setViewingDoc(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", padding: 4 }}
+                  >
+                    <SvgIcon d="M18 6L6 18M6 6l12 12" size={14} />
+                  </button>
+                </div>
+                <div style={{
+                  padding: "20px", overflowY: "auto", flex: 1,
+                  fontFamily: "var(--font-ibm-plex-mono), monospace",
+                  fontSize: 12, lineHeight: 1.7, color: "var(--text2)",
+                  whiteSpace: "pre-wrap", wordBreak: "break-word",
+                }}>
+                  {viewingDoc.content}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add resource modal */}
+          {showAddResource && (
+            <div style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,.65)",
+              display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200,
+            }}>
+              <form
+                onSubmit={handleAddResource}
+                style={{
+                  background: "var(--surface)", border: "1.5px solid var(--border)",
+                  borderRadius: 12, padding: 24, width: 520,
+                  display: "flex", flexDirection: "column", gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>Add resource</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)" }}>Origo-managed — injected as index, fetched on-demand via read_resource tool</div>
+                </div>
+
+                <input
+                  type="text" placeholder="Title — e.g. Company Overview, Shipment Workflow"
+                  value={resourceTitle} onChange={e => setResourceTitle(e.target.value)} required
+                  style={{
+                    fontSize: 12, padding: "8px 10px",
+                    border: "1.5px solid var(--border)", borderRadius: 6,
+                    background: "var(--bg)", color: "var(--text)",
+                    fontFamily: "var(--font-ibm-plex-sans), sans-serif", outline: "none",
+                  }}
+                />
+
+                <select
+                  value={resourceDocType} onChange={e => setResourceDocType(e.target.value)}
+                  style={{
+                    fontSize: 12, padding: "8px 10px",
+                    border: "1.5px solid var(--border)", borderRadius: 6,
+                    background: "var(--bg)", color: "var(--text)",
+                    fontFamily: "var(--font-ibm-plex-sans), sans-serif", outline: "none",
+                  }}
+                >
+                  {["overview", "contact", "workflow", "product", "reference", "example"].map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+
+                <textarea
+                  placeholder="Content — plain text or markdown"
+                  value={resourceContent} onChange={e => setResourceContent(e.target.value)} required
+                  rows={10}
+                  style={{
+                    fontSize: 12, padding: "8px 10px",
+                    border: "1.5px solid var(--border)", borderRadius: 6,
+                    background: "var(--bg)", color: "var(--text)",
+                    fontFamily: "var(--font-ibm-plex-mono), monospace",
+                    outline: "none", resize: "vertical", lineHeight: 1.6,
+                  }}
+                />
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button type="button" onClick={() => setShowAddResource(false)}
+                    style={{
+                      padding: "6px 14px", border: "1.5px solid var(--border)",
+                      borderRadius: 6, background: "none", fontSize: 11,
+                      color: "var(--text3)", cursor: "pointer",
+                      fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                    }}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={savingResource}
+                    style={{
+                      padding: "6px 16px", background: "var(--text)", color: "var(--bg)",
+                      border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      cursor: savingResource ? "not-allowed" : "pointer", opacity: savingResource ? 0.6 : 1,
+                      fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                    }}>
+                    {savingResource ? "Saving..." : "Save resource"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Resource list */}
+          <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+            {resources.length === 0 ? (
+              <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>
+                No resources yet — add company context, workflows, or product specs
+              </div>
+            ) : resources.map((doc, i) => (
+              <ResourceRow
+                key={doc.id}
+                doc={doc}
+                last={i === resources.length - 1}
+                onView={() => handleViewDoc(doc)}
+                onDelete={() => handleDeleteDoc(doc.id)}
+                loadingContent={loadingDocContent}
+              />
+            ))}
           </div>
         </div>
       )}

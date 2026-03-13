@@ -246,7 +246,7 @@ Agents อยู่ที่ `~/.claude/agents/<name>.md`
 - [x] Auto-skill generation (save_skill tool + relevance inject)
 - [x] Settings page `/settings` (Account + AI Config panel)
 - [x] Admin File Browser — FileBrowser.tsx tree view, DELETE/download endpoints
-- [ ] Global Info — Origo identity inject ทุก account (ชื่อ, ทำอะไร, ติดต่อ) → GlobalInfo table + admin edit UI
+- [x] Global Info — Origo identity inject ทุก account · GlobalInfo table · Admin UI /admin/global · AI identity = "Origo AI"
 - [ ] Reminder system (background job / cron — ปัจจุบัน inject prompt แล้ว แต่ยังไม่มี push notification)
 - [ ] Production login fix (เพิ่ม Supabase redirect URL สำหรับ https://memory-chat-ochre.vercel.app/**)
 - [ ] Lead management — backlog

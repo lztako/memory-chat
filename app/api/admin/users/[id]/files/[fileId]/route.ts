@@ -2,14 +2,10 @@ import { NextRequest } from "next/server"
 import Papa from "papaparse"
 import { fileRepo } from "@/lib/repositories/file.repo"
 import { prisma } from "@/lib/prisma"
+import { checkAuth } from "@/lib/admin/auth"
 
 const MAX_ROWS = 500
 const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
-
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization")
-  return auth === `Bearer ${process.env.ADMIN_SECRET}`
-}
 
 // DELETE /api/admin/users/[id]/files/[fileId] — delete file
 export async function DELETE(

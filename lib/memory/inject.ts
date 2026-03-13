@@ -133,6 +133,45 @@ function buildAttachedFilesSection(files: AttachedFileSummary[]): string {
   return lines.join("\n")
 }
 
+type ResourceDocIndex = {
+  id: string
+  title: string
+  docType: string
+  parentType: string
+}
+
+function buildResourcesSection(resources: ResourceDocIndex[]): string {
+  if (resources.length === 0) return ""
+  const lines = ["\n\n## Resources ของ user นี้ (ใช้ read_resource พร้อม id เพื่ออ่านเนื้อหาเต็ม):"]
+  for (const r of resources) {
+    lines.push(`- [${r.docType}] ${r.title} — id: ${r.id}`)
+  }
+  return lines.join("\n")
+}
+
+type GlobalDocIndex = {
+  id: string
+  title: string
+  docType: string
+  category: string
+}
+
+function buildGlobalDocsSection(docs: GlobalDocIndex[]): string {
+  if (docs.length === 0) return ""
+  const byCategory = docs.reduce<Record<string, GlobalDocIndex[]>>((acc, d) => {
+    ;(acc[d.category] ??= []).push(d)
+    return acc
+  }, {})
+  const lines = ["\n\n## Origo Knowledge Base (ใช้ read_global_doc พร้อม id เพื่ออ่านเนื้อหาเต็ม):"]
+  for (const [cat, items] of Object.entries(byCategory)) {
+    lines.push(`### ${cat}`)
+    for (const d of items) {
+      lines.push(`- [${d.docType}] ${d.title} — id: ${d.id}`)
+    }
+  }
+  return lines.join("\n")
+}
+
 type ReminderTask = {
   title: string
   dueDate: Date | null
@@ -171,7 +210,37 @@ function buildReminderSection(tasks: ReminderTask[]): string {
   return lines.join("\n")
 }
 
-export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], reminderTasks: ReminderTask[] = [], userConfig: UserConfig[] = [], skills: UserSkill[] = [], message = "", attachedFiles: AttachedFileSummary[] = [], skillsPreFiltered = false, userFiles: UserFileSummary[] = [], activeTasks: ActiveTask[] = [], globalInfo: GlobalInfoItem[] = []): string {
+export type BuildSystemPromptOptions = {
+  longTerm: Memory[]
+  dailyLog: Memory[]
+  reminderTasks?: ReminderTask[]
+  userConfig?: UserConfig[]
+  skills?: UserSkill[]
+  message?: string
+  attachedFiles?: AttachedFileSummary[]
+  skillsPreFiltered?: boolean
+  userFiles?: UserFileSummary[]
+  activeTasks?: ActiveTask[]
+  globalInfo?: GlobalInfoItem[]
+  resources?: ResourceDocIndex[]
+  globalDocs?: GlobalDocIndex[]
+}
+
+export function buildSystemPrompt({
+  longTerm,
+  dailyLog,
+  reminderTasks = [],
+  userConfig = [],
+  skills = [],
+  message = "",
+  attachedFiles = [],
+  skillsPreFiltered = false,
+  userFiles = [],
+  activeTasks = [],
+  globalInfo = [],
+  resources = [],
+  globalDocs = [],
+}: BuildSystemPromptOptions): string {
   const longTermText =
     longTerm.length > 0
       ? longTerm.map((m: { content: string }) => `- ${m.content}`).join("\n")
@@ -200,12 +269,14 @@ export function buildSystemPrompt(longTerm: Memory[], dailyLog: Memory[], remind
   const attachedFilesSection = buildAttachedFilesSection(attachedFiles)
   const userFilesSection = buildUserFilesSection(userFiles)
   const activeTasksSection = buildActiveTasksSection(activeTasks)
+  const resourcesSection = buildResourcesSection(resources)
+  const globalDocsSection = buildGlobalDocsSection(globalDocs)
 
   return `You are Origo AI — AI ผู้ช่วยด้านการนำเข้า-ส่งออกจาก Origo
-วันนี้คือ ${today}${globalInfoSection}
+วันนี้คือ ${today}${globalInfoSection}${globalDocsSection}
 
 ## สิ่งที่รู้เกี่ยวกับ user (ถาวร):
-${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSection}${activeTasksSection}${userFilesSection}${attachedFilesSection}
+${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSection}${activeTasksSection}${resourcesSection}${userFilesSection}${attachedFilesSection}
 
 ## Rules:
 - ตอบเป็นภาษาไทยถ้า user พูดภาษาไทย
@@ -219,6 +290,7 @@ ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSect
 - ใช้ update_context_state ทันทีหลังเริ่ม quiz หรือ task ใหม่
 - ใช้ save_memory เมื่อ user บอกข้อมูลสำคัญโดยตรง
 - ใช้ save_skill ทันทีหลังแก้ปัญหาที่ไม่ชัดเจน (column แปลก, format พิเศษ, logic เฉพาะของ user) เพื่อให้จำได้ครั้งต่อไป
+- เมื่ออ่าน resource ผ่าน read_resource แล้วพบ workflow, process, หรือ pattern ที่ user น่าจะถามซ้ำในอนาคต → เรียก save_skill อัตโนมัติทันที โดยไม่ต้องรอให้ user สั่ง ตั้งชื่อ skill ให้สื่อความหมาย เช่น "Shipment Workflow", "Contract Review Process"
 - ใช้ query_attached_file เมื่อ user ส่งไฟล์มาในแชท (CSV/JSON/TXT/XLSX) — ดู system prompt ส่วน "ไฟล์ที่แนบมา" สำหรับ fileId
 
 ## การค้นหาไฟล์ (สำคัญ):

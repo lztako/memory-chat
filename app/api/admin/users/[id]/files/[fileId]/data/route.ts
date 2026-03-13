@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization")
-  return auth === `Bearer ${process.env.ADMIN_SECRET}`
-}
+import { checkAuth } from "@/lib/admin/auth"
 
 // GET /api/admin/users/[id]/files/[fileId]/data — return full JSONB data for download
 export async function GET(

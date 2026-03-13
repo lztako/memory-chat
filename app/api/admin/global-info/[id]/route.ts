@@ -1,9 +1,5 @@
 import { globalInfoRepo } from "@/lib/repositories/globalInfo.repo"
-
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization")
-  return auth === `Bearer ${process.env.ADMIN_SECRET}`
-}
+import { checkAuth } from "@/lib/admin/auth"
 
 // PATCH /api/admin/global-info/[id] — update entry
 export async function PATCH(

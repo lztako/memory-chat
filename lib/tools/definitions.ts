@@ -294,6 +294,36 @@ export const toolDefinitions: Anthropic.Tool[] = [
     },
   },
   {
+    name: "read_resource",
+    description:
+      "อ่านเนื้อหาเต็มของ resource, skill reference, หรือ agent memory — ใช้เมื่อ index ใน system prompt บอกว่ามี document ที่เกี่ยวข้องกับงานที่กำลังทำ เช่น workflow ของบริษัท, product spec, หรือ skill reference โดยละเอียด",
+    input_schema: {
+      type: "object",
+      properties: {
+        docId: {
+          type: "string",
+          description: "ID ของ document — ได้จาก section 'Resources' ใน system prompt",
+        },
+      },
+      required: ["docId"],
+    },
+  },
+  {
+    name: "read_global_doc",
+    description:
+      "อ่านเนื้อหาเต็มของ GlobalDoc — ข้อมูล Origo เชิงลึก เช่น ประวัติบริษัท, บริการ, philosophy ใช้เมื่อ user ถามเกี่ยวกับ Origo และ index ใน system prompt มี document ที่เกี่ยวข้อง",
+    input_schema: {
+      type: "object",
+      properties: {
+        docId: {
+          type: "string",
+          description: "ID ของ GlobalDoc — ได้จาก section 'Origo Knowledge Base' ใน system prompt",
+        },
+      },
+      required: ["docId"],
+    },
+  },
+  {
     name: "use_agent",
     description:
       "เรียก specialist sub-agent เพื่อทำงานเฉพาะด้าน — ใช้เมื่อ task ต้องการ data หรือ expertise ที่ agent นั้นเชี่ยวชาญ\n" +
