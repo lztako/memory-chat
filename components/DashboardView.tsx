@@ -293,7 +293,7 @@ function HorizontalBarWidget({ widget }: { widget: ComputedHorizontalBar }) {
             contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
             labelStyle={{ color: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
           />
-          <Bar dataKey="value" fill="#6b8e7f" radius={[0, 3, 3, 0]} />
+          <Bar dataKey="value" fill="#8b7355" radius={[0, 3, 3, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -348,7 +348,7 @@ function LineChartWidget({ widget }: { widget: ComputedLineChart }) {
             contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
             labelStyle={{ color: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
           />
-          <Line type="monotone" dataKey="value" stroke="#2a2825" strokeWidth={2} dot={{ r: 3, fill: "#2a2825", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey="value" stroke="#c4a882" strokeWidth={2} dot={{ r: 3, fill: "#c4a882", strokeWidth: 0 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

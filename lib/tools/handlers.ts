@@ -14,6 +14,74 @@ import { toolDefinitions } from "@/lib/tools/definitions"
 import { recordTokenUsage } from "@/lib/ai/token-usage"
 import { Prisma } from "@prisma/client"
 
+// ── File query helpers ────────────────────────────────────────────────────
+type Row = Record<string, string>
+
+function applyFileFilter(rows: Row[], filter: string): Row[] {
+  const match = filter.match(/^(.+?)\s*(>=|<=|!=|>|<|=|contains)\s*(.+)$/)
+  if (!match) return rows
+  const [, colRaw, op, rawVal] = match
+  const col = colRaw.trim()
+  const val = rawVal.trim().replace(/^["']|["']$/g, "")
+  return rows.filter((row) => {
+    const cell = row[col]
+    if (cell === undefined) return false
+    const strCell = String(cell).toLowerCase()
+    const strVal = val.toLowerCase()
+    const numCell = parseFloat(String(cell))
+    const numVal = parseFloat(val)
+    switch (op) {
+      case "=":        return strCell === strVal
+      case "!=":       return strCell !== strVal
+      case ">":        return !isNaN(numCell) && !isNaN(numVal) && numCell > numVal
+      case "<":        return !isNaN(numCell) && !isNaN(numVal) && numCell < numVal
+      case ">=":       return !isNaN(numCell) && !isNaN(numVal) && numCell >= numVal
+      case "<=":       return !isNaN(numCell) && !isNaN(numVal) && numCell <= numVal
+      case "contains": return strCell.includes(strVal)
+      default:         return true
+    }
+  })
+}
+
+function applyGroupAggregate(
+  rows: Row[],
+  groupBy: string,
+  agg: Array<{ column: string; fn: string }>
+): Row[] {
+  const groups = new Map<string, Row[]>()
+  for (const row of rows) {
+    const key = row[groupBy] ?? "Unknown"
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(row)
+  }
+  return Array.from(groups.entries()).map(([key, groupRows]) => {
+    const result: Row = { [groupBy]: key }
+    for (const { column, fn } of agg) {
+      const nums = groupRows.map(r => parseFloat(r[column] ?? "0")).filter(v => !isNaN(v))
+      const total = nums.reduce((a, b) => a + b, 0)
+      switch (fn) {
+        case "sum":   result[`${column}_sum`]   = String(Math.round(total * 100) / 100); break
+        case "count": result[`${column}_count`] = String(nums.length); break
+        case "avg":   result[`${column}_avg`]   = String(nums.length ? Math.round(total / nums.length * 100) / 100 : 0); break
+        case "min":   result[`${column}_min`]   = String(nums.length ? Math.min(...nums) : 0); break
+        case "max":   result[`${column}_max`]   = String(nums.length ? Math.max(...nums) : 0); break
+      }
+    }
+    return result
+  })
+}
+
+// ── File data cache — shared across requests on the same server instance ──
+type FileCacheEntry = {
+  fileName: string
+  columns: string[]
+  rowCount: number
+  data: unknown
+  expiresAt: number
+}
+const _fileCache = new Map<string, FileCacheEntry>()
+const FILE_CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
 export async function executeToolCall(
   toolName: string,
   toolInput: Record<string, unknown>,
@@ -95,15 +163,59 @@ export async function executeToolCall(
 
     case "query_user_file": {
       const fileId = toolInput.fileId as string
-      const file = await fileRepo.getById(fileId, userId)
-      if (!file) {
-        return { error: "ไม่พบไฟล์ กรุณาตรวจสอบ fileId อีกครั้ง" }
+
+      // Load from cache or DB
+      const cacheKey = `${userId}:${fileId}`
+      const cached = _fileCache.get(cacheKey)
+      let entry: FileCacheEntry
+      if (cached && cached.expiresAt > Date.now()) {
+        entry = cached
+      } else {
+        const file = await fileRepo.getById(fileId, userId)
+        if (!file) return { error: "ไม่พบไฟล์ กรุณาตรวจสอบ fileId อีกครั้ง" }
+        entry = { fileName: file.fileName, columns: file.columns, rowCount: file.rowCount, data: file.data, expiresAt: Date.now() + FILE_CACHE_TTL_MS }
+        _fileCache.set(cacheKey, entry)
       }
+
+      let rows = entry.data as Row[]
+
+      // Apply filter
+      const filterStr = toolInput.filter as string | undefined
+      if (filterStr) rows = applyFileFilter(rows, filterStr)
+
+      // Apply groupBy + aggregate
+      const groupBy = toolInput.groupBy as string | undefined
+      const aggregate = toolInput.aggregate as Array<{ column: string; fn: string }> | undefined
+      if (groupBy && aggregate?.length) rows = applyGroupAggregate(rows, groupBy, aggregate)
+
+      // Apply column selection
+      const columns = toolInput.columns as string[] | undefined
+      if (columns?.length) rows = rows.map(r => Object.fromEntries(columns.map(c => [c, r[c] ?? ""])) as Row)
+
+      // Apply orderBy
+      const orderBy = toolInput.orderBy as string | undefined
+      if (orderBy) {
+        const [col, dirStr] = orderBy.trim().split(/\s+/)
+        const desc = dirStr?.toLowerCase() === "desc"
+        rows = [...rows].sort((a, b) => {
+          const an = parseFloat(a[col] ?? ""), bn = parseFloat(b[col] ?? "")
+          const cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : String(a[col] ?? "").localeCompare(String(b[col] ?? ""))
+          return desc ? -cmp : cmp
+        })
+      }
+
+      // Apply limit (default 50)
+      const totalFiltered = rows.length
+      const limit = (toolInput.limit as number | undefined) ?? 50
+      const sliced = rows.slice(0, limit)
+
       return {
-        fileName: file.fileName,
-        columns: file.columns,
-        rowCount: file.rowCount,
-        data: file.data,
+        fileName: entry.fileName,
+        totalRows: entry.rowCount,
+        filtered: totalFiltered,
+        returned: sliced.length,
+        columns: columns ?? entry.columns,
+        data: sliced,
       }
     }
 

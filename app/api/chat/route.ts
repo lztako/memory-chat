@@ -103,11 +103,18 @@ export async function POST(req: Request) {
     userContent = enrichedMessage
   }
 
+  // Truncate old history messages — keep last 4 messages (2 turns) full,
+  // compress older ones to avoid context bloat in long conversations
+  const KEEP_FULL_LAST_N = 4
+  const MAX_OLD_MSG_CHARS = 800
   const apiMessages: Anthropic.MessageParam[] = [
-    ...dbMessages.map((m: { role: string; content: string }) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
+    ...dbMessages.map((m: { role: string; content: string }, i: number) => {
+      const isRecent = i >= dbMessages.length - KEEP_FULL_LAST_N
+      const content = isRecent || m.content.length <= MAX_OLD_MSG_CHARS
+        ? m.content
+        : m.content.slice(0, MAX_OLD_MSG_CHARS) + `\n…[ตัดทอน — ดูรายละเอียดใน response ก่อนหน้า]`
+      return { role: m.role as "user" | "assistant", content }
+    }),
     { role: "user", content: userContent },
   ]
 
@@ -202,6 +209,16 @@ export async function POST(req: Request) {
           const finalMsg = await stream.finalMessage()
           recordTokenUsage(USER_ID, finalMsg.usage.input_tokens, finalMsg.usage.output_tokens)
 
+          // Truncate large tool results before pushing to next iteration context
+          // query_user_file is exempt — AI needs full data for analysis
+          const MAX_TOOL_RESULT_CHARS = 8000
+          const truncateToolResult = (toolName: string, content: string) => {
+            if (toolName === "query_user_file") return content
+            return content.length <= MAX_TOOL_RESULT_CHARS
+              ? content
+              : content.slice(0, MAX_TOOL_RESULT_CHARS) + `\n…[ตัดทอนเพื่อประหยัด context]`
+          }
+
           if (finalMsg.stop_reason === "tool_use") {
             toolIterations++
             apiMessages.push({ role: "assistant", content: finalMsg.content })
@@ -249,7 +266,7 @@ export async function POST(req: Request) {
                 toolResults.push({
                   type: "tool_result",
                   tool_use_id: block.id,
-                  content: JSON.stringify(result),
+                  content: truncateToolResult(block.name, JSON.stringify(result)),
                 })
               }
               controller.enqueue(sse("tool_done", { id: block.id }))

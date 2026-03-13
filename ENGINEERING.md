@@ -264,6 +264,23 @@ No-gos (รอบนี้):
 - [ ] Skill injection ใช้ keyword matching ล้วน → false negative สูง; semantic path มีแล้ว (`listByUserSemantic`) แต่ไม่ได้ใช้เป็น default ใน inject.ts
 - [ ] `handlers.ts` + `definitions.ts` โตแบบ monolith → แตกเป็น domain files: `tendata.ts`, `memory.ts`, `tasks.ts`, `files.ts`
 
+**Tech Debt — Context Window & Performance (จาก TRR onboarding test — 2026-03-13)**
+
+Root cause: ระบบปัจจุบัน "โหลดข้อมูลทั้งหมดใส่ให้ AI อ่าน" แทนที่จะ "ให้ AI บอกว่าต้องการอะไร แล้วค่อยเอาไปให้" — ทำให้ช้าและ context เต็มเมื่อคุยยาว
+
+Level 1 — Quick Fix (S appetite, แก้ก่อน):
+- [ ] **Truncate tool results ใน conversation history** — ใน `chat/route.ts` ก่อน build messages ให้แทนที่ tool result ที่ใหญ่กว่า ~500 tokens ด้วย summary เช่น `[query_file: 262 rows analyzed — see prior response]` แก้ปัญหา crash เมื่อ context เต็ม
+- [ ] **File data cache ใน handlers.ts** — Map<fileId, {data, expiry}> TTL 30 นาที ลด DB round-trip ทุกครั้งที่ถามใหม่
+
+Level 2 — Smarter Tool (M appetite, ทำหลัง Level 1):
+- [ ] **Smart `query_file` filters** — เพิ่ม optional params: `filter`, `columns`, `limit`, `groupBy`, `aggregate` เพื่อให้ tool return เฉพาะ rows ที่ต้องการแทนทั้งหมด ลด tool result size 80-90%
+  - No-go: ไม่ทำ full SQL engine — แค่ simple filter + aggregate พอ
+
+Level 3 — Architecture (L appetite, รอ user feedback จริงก่อน):
+- [ ] **Pre-computed aggregates ตอน upload** — เมื่อ upload ไฟล์ คำนวณ summary (count by group, sum ต่อ column) เก็บใน `UserFile.summary` JSONB — KPI queries ไม่ต้องโหลดไฟล์เลย
+- [ ] **Conversation summarization** — หลังทุก 6 messages ให้ Haiku สรุป conversation เก็บใน `Conversation.summary` แทนส่ง full history — คุยได้ไม่จำกัดโดยไม่ overflow
+- [ ] **FileRow table migration** — แยก `UserFile.data` JSONB ออกเป็น `FileRow` table (fileId, rowIndex, data JSONB) → enable SQL filter/aggregate โดยตรง แก้ root cause จริง (Type 1 decision → เขียน ADR ก่อน implement)
+
 ---
 
 ## 9. ADR Index

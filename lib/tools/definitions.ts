@@ -172,13 +172,46 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "query_user_file",
     description:
-      "ดึงข้อมูลจากไฟล์ CSV ที่ user upload ไว้ — ใช้เพื่อวิเคราะห์ข้อมูล หา pattern หรือตอบคำถามจากข้อมูลในไฟล์ ได้รับ rows ทั้งหมด (สูงสุด 500 rows)",
+      "ดึงและวิเคราะห์ข้อมูลจากไฟล์ที่ user อัปโหลดไว้ — ใช้ filter/aggregate/groupBy เพื่อดึงเฉพาะข้อมูลที่ต้องการ ห้ามดึงข้อมูลทั้งหมดโดยไม่มี filter หรือ aggregate เพื่อประหยัด context ถ้าต้องการ summary ให้ใช้ groupBy+aggregate แทนการดึง raw rows",
     input_schema: {
       type: "object",
       properties: {
         fileId: {
           type: "string",
-          description: "ID ของไฟล์ที่ต้องการ query (ได้จาก list_user_files)",
+          description: "ID ของไฟล์ (ได้จาก list_user_files)",
+        },
+        filter: {
+          type: "string",
+          description: 'เงื่อนไข filter เช่น "status = Overdue", "usd > 10000", "customer contains Wilmar", "team = PSR"',
+        },
+        columns: {
+          type: "array",
+          items: { type: "string" },
+          description: "เลือกเฉพาะ columns ที่ต้องการ ถ้าไม่ระบุจะคืนทุก column",
+        },
+        groupBy: {
+          type: "string",
+          description: "group ข้อมูลตาม column นี้ ใช้ร่วมกับ aggregate เช่น 'customer', 'team', 'status'",
+        },
+        aggregate: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              column: { type: "string", description: "ชื่อ column ที่ต้องการคำนวณ" },
+              fn: { type: "string", enum: ["sum", "count", "avg", "min", "max"] },
+            },
+            required: ["column", "fn"],
+          },
+          description: "คำนวณ aggregate เช่น [{column: 'usd', fn: 'sum'}, {column: 'ton', fn: 'count'}]",
+        },
+        orderBy: {
+          type: "string",
+          description: 'เรียงลำดับ เช่น "usd desc", "bl_date asc", "shipped desc"',
+        },
+        limit: {
+          type: "number",
+          description: "จำนวน rows สูงสุดที่ return (default 50) — ถ้าต้องการ summary ทั้งหมดให้ใช้ aggregate แทน",
         },
       },
       required: ["fileId"],
