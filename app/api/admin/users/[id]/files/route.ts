@@ -3,7 +3,7 @@ import Papa from "papaparse"
 import { fileRepo } from "@/lib/repositories/file.repo"
 import { checkAuth } from "@/lib/admin/auth"
 
-const MAX_ROWS = 500
+const MAX_ROWS = 1000
 const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

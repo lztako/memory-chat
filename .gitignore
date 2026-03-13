@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local credentials (never commit)
+accounts.local.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*
