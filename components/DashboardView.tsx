@@ -2,9 +2,9 @@
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, LineChart, Line,
 } from "recharts"
-import type { ComputedWidget, ComputedKPI, ComputedBarChart, ComputedDonut, ComputedTable } from "@/app/chat/dashboard/page"
+import type { ComputedWidget, ComputedKPI, ComputedBarChart, ComputedDonut, ComputedTable, ComputedHorizontalBar, ComputedProgressKPI, ComputedLineChart } from "@/app/chat/dashboard/page"
 
 
 // ── Palette ────────────────────────────────────────────────────────
@@ -266,6 +266,95 @@ function TableWidget({ widget }: { widget: ComputedTable }) {
   )
 }
 
+// ── Horizontal Bar Widget ──────────────────────────────────────────
+function HorizontalBarWidget({ widget }: { widget: ComputedHorizontalBar }) {
+  const height = Math.max(160, widget.data.length * 32 + 40)
+  return (
+    <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, padding: "20px 22px 16px" }}>
+      <div style={{ fontSize: 11, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 16 }}>
+        {widget.title}
+      </div>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={widget.data} layout="vertical" margin={{ top: 0, right: 48, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+          <XAxis
+            type="number"
+            tickFormatter={(v) => shortValue(v)}
+            tick={{ fontSize: 10, fill: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono)" }}
+            axisLine={false} tickLine={false}
+          />
+          <YAxis
+            type="category" dataKey="label" width={110}
+            tick={{ fontSize: 10, fill: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
+            axisLine={false} tickLine={false}
+          />
+          <Tooltip
+            formatter={(v) => [formatValue(Number(v), widget.valueFormat ?? "number"), widget.title]}
+            contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
+            labelStyle={{ color: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
+          />
+          <Bar dataKey="value" fill="#6b8e7f" radius={[0, 3, 3, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+// ── Progress KPI Widget ────────────────────────────────────────────
+function ProgressKPIWidget({ widget }: { widget: ComputedProgressKPI }) {
+  const pct = Math.round(widget.percent * 100)
+  const displayValue = formatValue(widget.value, widget.format)
+  const displayTarget = formatValue(widget.target, widget.format)
+  return (
+    <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, padding: "20px 22px 18px", display: "flex", flexDirection: "column", gap: 10, minHeight: 100 }}>
+      <div style={{ fontSize: 11, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text3)" }}>
+        {widget.title}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", letterSpacing: "-.02em", lineHeight: 1.1 }}>{pct}%</span>
+        <span style={{ fontSize: 11, color: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono)" }}>
+          {displayValue} / {displayTarget}{widget.suffix ? ` ${widget.suffix}` : ""}
+        </span>
+      </div>
+      <div style={{ height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? "#6b8e7f" : pct >= 70 ? "#8b7355" : "#c4a882", borderRadius: 3, transition: "width .4s" }} />
+      </div>
+    </div>
+  )
+}
+
+// ── Line Chart Widget ──────────────────────────────────────────────
+function LineChartWidget({ widget }: { widget: ComputedLineChart }) {
+  return (
+    <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, padding: "20px 22px 16px" }}>
+      <div style={{ fontSize: 11, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 16 }}>
+        {widget.title}
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={widget.data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 10, fill: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono)" }}
+            axisLine={false} tickLine={false}
+          />
+          <YAxis
+            tickFormatter={(v) => shortValue(v)}
+            tick={{ fontSize: 10, fill: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono)" }}
+            axisLine={false} tickLine={false} width={52}
+          />
+          <Tooltip
+            formatter={(v) => [formatValue(Number(v), widget.valueFormat ?? "number"), widget.title]}
+            contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
+            labelStyle={{ color: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
+          />
+          <Line type="monotone" dataKey="value" stroke="#2a2825" strokeWidth={2} dot={{ r: 3, fill: "#2a2825", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 // ── Empty State ────────────────────────────────────────────────────
 function EmptyDashboard() {
   return (
@@ -299,7 +388,8 @@ function EmptyDashboard() {
 // ── Main Component ─────────────────────────────────────────────────
 export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
   const kpis = widgets.filter((w): w is ComputedKPI => w.type === "kpi")
-  const charts = widgets.filter((w) => w.type === "bar_chart" || w.type === "donut_chart")
+  const progressKpis = widgets.filter((w): w is ComputedProgressKPI => w.type === "progress_kpi")
+  const charts = widgets.filter((w) => w.type === "bar_chart" || w.type === "donut_chart" || w.type === "horizontal_bar" || w.type === "line_chart")
   const tables = widgets.filter((w): w is ComputedTable => w.type === "table")
 
   if (widgets.length === 0) {
@@ -355,13 +445,15 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
 
         {/* KPI row */}
         {kpis.length > 0 && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${Math.min(kpis.length, 4)}, 1fr)`,
-            gap: 12,
-            marginBottom: 16,
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(kpis.length, 4)}, 1fr)`, gap: 12, marginBottom: 12 }}>
             {kpis.map((w) => <KPICard key={w.id} widget={w} />)}
+          </div>
+        )}
+
+        {/* Progress KPI row */}
+        {progressKpis.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(progressKpis.length, 4)}, 1fr)`, gap: 12, marginBottom: 12 }}>
+            {progressKpis.map((w) => <ProgressKPIWidget key={w.id} widget={w} />)}
           </div>
         )}
 
@@ -378,7 +470,9 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
               return (
                 <div key={w.id} style={isFull ? { gridColumn: "1 / -1" } : {}}>
                   {w.type === "bar_chart" && <BarChartWidget widget={w as ComputedBarChart} />}
+                  {w.type === "line_chart" && <LineChartWidget widget={w as ComputedLineChart} />}
                   {w.type === "donut_chart" && <DonutWidget widget={w as ComputedDonut} />}
+                  {w.type === "horizontal_bar" && <HorizontalBarWidget widget={w as ComputedHorizontalBar} />}
                 </div>
               )
             })}

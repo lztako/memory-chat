@@ -6,7 +6,7 @@ import { DashboardView } from "@/components/DashboardView"
 // ── Widget config types (stored in DB) ────────────────────────────
 type WidgetConfig = {
   id: string
-  type: "kpi" | "bar_chart" | "donut_chart" | "table"
+  type: "kpi" | "bar_chart" | "donut_chart" | "table" | "horizontal_bar" | "progress_kpi" | "line_chart"
   title: string
   layout?: "full" | "half"
   fileId?: string
@@ -15,6 +15,10 @@ type WidgetConfig = {
     aggregate?: "sum" | "count" | "count_distinct" | "filter_count"
     filterValue?: string
     format?: string
+    suffix?: string
+    target?: number
+    targetColumn?: string
+    targetAggregate?: "sum" | "count"
     groupBy?: string
     valueColumn?: string
     xAxis?: string
@@ -45,7 +49,19 @@ export type ComputedTable = {
   id: string; type: "table"; title: string; layout?: "full" | "half"
   columns: string[]; rows: Record<string, string>[]
 }
-export type ComputedWidget = ComputedKPI | ComputedBarChart | ComputedDonut | ComputedTable
+export type ComputedHorizontalBar = {
+  id: string; type: "horizontal_bar"; title: string; layout?: "full" | "half"
+  data: { label: string; value: number }[]; valueFormat?: string
+}
+export type ComputedProgressKPI = {
+  id: string; type: "progress_kpi"; title: string; layout?: "full" | "half"
+  value: number; target: number; percent: number; format: string; suffix?: string
+}
+export type ComputedLineChart = {
+  id: string; type: "line_chart"; title: string; layout?: "full" | "half"
+  data: { label: string; value: number }[]; valueFormat?: string
+}
+export type ComputedWidget = ComputedKPI | ComputedBarChart | ComputedDonut | ComputedTable | ComputedHorizontalBar | ComputedProgressKPI | ComputedLineChart
 
 // ── Aggregate helpers ──────────────────────────────────────────────
 type Row = Record<string, string>
@@ -141,6 +157,42 @@ async function computeWidget(
     }
     if (config.limit) rows = rows.slice(0, config.limit)
     return { id: widget.id, type: "table", title: widget.title, layout: widget.layout, columns: config.columns ?? [], rows }
+  }
+
+  if (widget.type === "horizontal_bar") {
+    let chartData: { label: string; value: number }[] = []
+    if (config.groupBy && config.valueColumn) {
+      const grouped = groupByCol(data, config.groupBy, config.valueColumn)
+      const limited = config.limit ? grouped.slice(0, config.limit) : grouped
+      chartData = limited.map(({ name, value }) => ({ label: name, value }))
+    }
+    return { id: widget.id, type: "horizontal_bar", title: widget.title, layout: widget.layout, data: chartData, valueFormat: config.format }
+  }
+
+  if (widget.type === "progress_kpi") {
+    // compute numerator
+    let value = 0
+    if (config.aggregate === "count") value = data.length
+    else if (config.aggregate === "sum" && config.column) value = sumCol(data, config.column)
+    else if (config.aggregate === "count_distinct" && config.column) value = new Set(data.map(r => r[config.column!])).size
+    else if (config.aggregate === "filter_count" && config.column && config.filterValue) value = data.filter(r => r[config.column!] === config.filterValue).length
+
+    // compute denominator
+    let target = config.target ?? 0
+    if (!config.target && config.targetColumn && config.targetAggregate) {
+      if (config.targetAggregate === "sum") target = sumCol(data, config.targetColumn)
+      else if (config.targetAggregate === "count") target = data.length
+    }
+    const percent = target > 0 ? Math.min(value / target, 1) : 0
+    return { id: widget.id, type: "progress_kpi", title: widget.title, layout: widget.layout, value, target, percent, format: config.format ?? "number", suffix: config.suffix }
+  }
+
+  if (widget.type === "line_chart") {
+    let chartData: { label: string; value: number }[] = []
+    if (config.xFormat === "month" && config.xAxis && config.yAxis) {
+      chartData = groupByMonth(data, config.xAxis, config.yAxis)
+    }
+    return { id: widget.id, type: "line_chart", title: widget.title, layout: widget.layout, data: chartData, valueFormat: config.format }
   }
 
   return null
