@@ -949,7 +949,16 @@ export default function AdminUserDetailPage() {
 
       {/* STRUCTURE TAB */}
       {tab === "structure" && (
-        <StructureTree userId={userId} secret={secret} />
+        <StructureTree
+          userId={userId}
+          secret={secret}
+          files={user.files}
+          skills={user.skills}
+          memories={user.memories}
+          agents={agents}
+          resources={resources}
+          onRefresh={load}
+        />
       )}
 
       {/* WIDGET CONFIG TAB */}
