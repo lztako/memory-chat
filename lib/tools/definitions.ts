@@ -213,6 +213,11 @@ export const toolDefinitions: Anthropic.Tool[] = [
           type: "number",
           description: "จำนวน rows สูงสุดที่ return (default 50) — ถ้าต้องการ summary ทั้งหมดให้ใช้ aggregate แทน",
         },
+        compute: {
+          type: "object",
+          additionalProperties: { type: "string" },
+          description: 'คำนวณ derived fields จาก aggregate results เช่น {"fill_rate": "acc_sum / qty_contracted_sum * 100"} — ใช้ชื่อ column จาก aggregate result เป็น operands ได้เลย',
+        },
       },
       required: ["fileId"],
     },

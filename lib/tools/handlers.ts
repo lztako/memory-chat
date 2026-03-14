@@ -17,6 +17,19 @@ import { Prisma } from "@prisma/client"
 // ── File query helpers ────────────────────────────────────────────────────
 type Row = Record<string, string>
 
+// Safe arithmetic expression evaluator — replaces column names with values, then evals pure math
+function evaluateExpr(expr: string, row: Row): number {
+  const substituted = expr.replace(/[a-zA-Z_][a-zA-Z0-9_]*/g, (match) => {
+    const val = parseFloat(row[match] ?? "0")
+    return isNaN(val) ? "0" : String(val)
+  })
+  if (!/^[\d\s+\-*/().]+$/.test(substituted)) return NaN
+  try {
+    // eslint-disable-next-line no-new-func
+    return Function(`"use strict"; return (${substituted})`)() as number
+  } catch { return NaN }
+}
+
 function applyOneFilter(rows: Row[], filter: string): Row[] {
   const match = filter.match(/^(.+?)\s*(>=|<=|!=|>|<|=|contains)\s*(.+)$/)
   if (!match) return rows
@@ -225,6 +238,19 @@ export async function executeToolCall(
           const an = parseFloat(a[col] ?? ""), bn = parseFloat(b[col] ?? "")
           const cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : String(a[col] ?? "").localeCompare(String(b[col] ?? ""))
           return desc ? -cmp : cmp
+        })
+      }
+
+      // Apply compute fields (derived from aggregate results)
+      const compute = toolInput.compute as Record<string, string> | undefined
+      if (compute && Object.keys(compute).length > 0) {
+        rows = rows.map(row => {
+          const out = { ...row }
+          for (const [fieldName, expr] of Object.entries(compute)) {
+            const val = evaluateExpr(expr, row)
+            out[fieldName] = isNaN(val) ? "N/A" : String(Math.round(val * 10000) / 10000)
+          }
+          return out
         })
       }
 
