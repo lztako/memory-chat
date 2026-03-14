@@ -156,6 +156,33 @@ components/
 - ไม่ over-engineer — ทำเฉพาะที่จำเป็น
 - path alias `@/` = project root
 
+## Data Cleaning Workflow (ทีม Origo ทำเอง ไม่ใช่ลูกค้า)
+
+### Convention
+- โฟลเดอร์: `data-cleaning/YYYY-MM-DD-<name>/`
+- ไฟล์ในแต่ละโฟลเดอร์: `clean_<name>.py` + `PLAN.md` + `README.md` + output CSV
+- ภาษา: **Python + openpyxl + csv** (ไม่ใช้ pandas — ไม่ต้องการ dependency เพิ่ม)
+- เมื่อมีไฟล์ใหม่ที่ format เดิม → copy script เดิมแล้วปรับ `INPUT_FILE` + `OUTPUT_FILE` ได้เลย
+
+### Upload / Update ไฟล์เข้า webapp
+- **ไฟล์ใหม่**: `POST /api/admin/users/<userId>/files` พร้อม `file` + `fileType` + `description`
+- **อัปเดตไฟล์เดิม**: `PUT /api/admin/users/<userId>/files/<fileId>` — fileId ยังอยู่ AI ไม่หลุด reference
+- Auth: `Authorization: Bearer <ADMIN_SECRET>`
+
+### ไฟล์ที่ upload แล้ว (Origo — userId: b40f34d9)
+| fileId (ย่อ) | fileName | fileType |
+|---|---|---|
+| `cmmoawi5...` | monitoring_clean.csv | shipment |
+| (finance) | finance.csv | invoice |
+
+### Customer Canonical Names (monitoring ↔ finance ต้องตรงกัน)
+COFCO · Czarnikow · Alvean · LDC · Wilmar · Transworld · Kirirom · Micronesian · Sangsangysang · Pacific Source · Professional Business · Davis Commodities · Byfar · Golden Agri · ED&F Man · Sucden · Czarnikow · ETG · ACC Austpac · Green Keeper · ICI System · NESTO · Ng Chee Lee · ORCO
+
+ลูกค้าใหม่ยังไม่มีใน finance: `Banrai` · `Grocers` · `J Square`
+
+### Product Format Rule
+หน่วย KG/G ติดตัวเลข ไม่มี space + uppercase เสมอ: `50KG` `500G` `1KG` `2KG`
+
 ## Behavior Rules (Auto)
 Claude ควรทำสิ่งเหล่านี้อัตโนมัติโดยไม่ต้องสั่ง:
 - เมื่อต้องเพิ่ม Tendata tool → แตะ 3 ไฟล์ (definitions + handlers + client) ครบเสมอ พร้อม rate limit check

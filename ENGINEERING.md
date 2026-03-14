@@ -191,31 +191,27 @@ Deploy (code ใน production, flag OFF) → Internal test → 10% → 50% → 
 - [x] `GET /api/admin/users/[id]/files/[fileId]/data` — download endpoint
 - [x] แสดง size, updatedAt, createdAt, rowCount, cols ต่อไฟล์
 
-**Feature 3 — Document Layer: UserDoc + GlobalDoc + Resources** (NEXT cycle)
-> Design เต็มอยู่ที่ `~/.claude/projects/.../memory/project_doc_layer_architecture.md`
-
-แนวคิดหลัก (brainstorm 2026-03-12): ใช้ Claude Code skill structure เป็น model
-- inject แค่ "index" (~50 tokens) ทุก request
-- fetch เนื้อหาจริง on-demand ผ่าน `read_resource` tool
-- **table เดียว** `UserDoc` ครอบทั้ง skill sub-docs + agent sub-docs + resources
-
-> **MCP validates this design (2026-03-12):** pattern "inject index only → fetch on-demand" คือสิ่งที่ MCP Resources ทำ verbatim — เราไม่ได้ reinvent แต่ implement มันเองใน web context ซึ่ง Anthropic API ยังไม่ support MCP natively เหมือน Claude Code CLI
+**Feature 3 — Document Layer: UserDoc + GlobalDoc + Resources** ✅ Core done (2026-03-13)
 
 Build order (เรียงตาม dependency):
-- [ ] `UserDoc` table — id, userId, parentId, parentType, docType, title, content, embedding
-- [ ] `read_resource` tool — definitions + handlers + repo
-- [ ] Resources index inject ใน `buildSystemPrompt` (~50 tokens)
-- [ ] Admin UI — upload/manage resource docs ต่อ user
-- [ ] `GlobalDoc` table + `read_global_doc` tool (Origo knowledge base ทุก user)
+- [x] `UserDoc` table — id, userId, parentId, parentType, docType, title, content, embedding
+- [x] `read_resource` tool — definitions + handlers + repo
+- [x] Resources index inject ใน `buildSystemPrompt` (~50 tokens)
+- [x] `GlobalDoc` table + `read_global_doc` tool (Origo knowledge base ทุก user)
+- [x] Skill sub-docs (reference.md, examples) ผ่าน UserDoc — TRR monitoring เป็น pilot
+- [ ] Admin UI — upload/manage resource docs ต่อ user → **ดู Feature 4 (Admin Structure Tab)**
 - [ ] Feedback loop — resource upload → AI generate workflow → `save_skill` อัตโนมัติ
 - [ ] UserGraphView — เพิ่ม Resources spoke
-- [ ] Skill sub-docs (reference.md, examples) ผ่าน UserDoc
 - [ ] Agent sub-docs ผ่าน UserDoc
 
-No-gos (รอบนี้):
-- ไม่ทำ versioning/history ของ docs
-- ไม่ให้ลูกค้า upload เอง — Origo เท่านั้น
-- ไม่ทำ custom sub-agent creation ยัง (รอ brainstorm รอบถัดไป)
+**Ops — TRR Monitoring Setup** ✅ เสร็จแล้ว (2026-03-14)
+- [x] Clean data: `Update-Conventional monitoring @130326.xlsx` → 2 CSV files
+  - `monitoring_contracts.csv` (217 rows, 1 row/contract)
+  - `monitoring_shipments.csv` (252 rows, long format 1 row/month)
+- [x] Fix `query_user_file` 3 bugs: aggregate without groupBy, count non-numeric, AND filter support
+- [x] Upload ทั้ง 2 ไฟล์ + user_config `monitoring_file_rule` (Thai column aliases)
+- [x] UserSkill `trr_monitoring` — proper SKILL.md ที่ reference 3 UserDocs
+- [x] UserDocs: Schema / Query Patterns / Business Rules (parentType: resource)
 
 ### DONE (ล่าสุด)
 - [x] Global Info — Origo identity inject ทุก account · GlobalInfo table · Admin UI /admin/global · seed defaults
@@ -230,9 +226,9 @@ No-gos (รอบนี้):
 - [x] Admin UI — User Graph View — pure SVG radial spoke · User→Files/Skills/Memory/Tasks · hover tooltip · zero dependencies
 - [x] xlsx UC1 — parse .xlsx in chat (SheetJS, auto header detection, multi-sheet) · attach from empty state · badge inside input card
 - [x] Agent Layer — UserAgent table · use_agent tool (isolated Haiku loop) · seed 3 global agents · Admin UI Agents tab · UserGraphView 5th spoke (purple) · ADR-006
+- [x] Feature 4 — Admin Structure Tab (2026-03-14) — tree view Skills→Docs (lazy load) + side panel editor · skill CRUD routes + UserDoc PATCH + parentType/parentId filter · StructureTree.tsx · link-trr-docs-to-skill script · TRR monitoring docs linked under skill
 
 ### NEXT
-- **Feature 3 — Document Layer** (UserDoc + GlobalDoc + Resources) — design พร้อมแล้ว รอ start
 - **Agent Teams + Custom Sub-agents** — design พร้อมแล้ว (2026-03-12)
   - Full design: `~/.claude/projects/.../memory/project_agent_architecture.md`
   - Subagent gaps: maxTurns configurable, memory (UserDoc), skills[] preload, hooks

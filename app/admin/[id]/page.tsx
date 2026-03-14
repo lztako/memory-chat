@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { useAdminAuth } from "../layout"
 import { UserGraphView } from "@/components/admin/UserGraphView"
 import { FileBrowser } from "@/components/admin/FileBrowser"
+import { StructureTree } from "@/components/admin/StructureTree"
 
 type UserDetail = {
   id: string
@@ -23,7 +24,7 @@ type AgentEntry = {
   tools: string[]; model: string; maxTurns: number; isActive: boolean; createdAt: string
 }
 
-type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph" | "agents" | "resources"
+type Tab = "files" | "memories" | "skills" | "tasks" | "config" | "graph" | "agents" | "resources" | "structure"
 const TABS: { key: Tab; label: string }[] = [
   { key: "graph", label: "Graph" },
   { key: "files", label: "Files" },
@@ -32,6 +33,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "tasks", label: "Tasks" },
   { key: "agents", label: "Agents" },
   { key: "resources", label: "Resources" },
+  { key: "structure", label: "Structure" },
   { key: "config", label: "Widget Config" },
 ]
 
@@ -371,6 +373,7 @@ export default function AdminUserDetailPage() {
     tasks: user.tasks.length,
     agents: totalAgents,
     resources: resources.length,
+    structure: user.skills.length,
     config: user.dashboard?.widgets.length ?? 0,
   }
 
@@ -942,6 +945,11 @@ export default function AdminUserDetailPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* STRUCTURE TAB */}
+      {tab === "structure" && (
+        <StructureTree userId={userId} secret={secret} />
       )}
 
       {/* WIDGET CONFIG TAB */}

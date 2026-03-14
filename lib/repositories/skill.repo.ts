@@ -81,4 +81,12 @@ export const skillRepo = {
       where: { userId, name },
     })
   },
+
+  async update(id: string, userId: string, data: Partial<Pick<SkillRow, 'name' | 'trigger' | 'solution' | 'tools'>>) {
+    return prisma.userSkill.updateMany({ where: { id, userId }, data })
+  },
+
+  async delete(id: string, userId: string) {
+    return prisma.userSkill.deleteMany({ where: { id, userId } })
+  },
 }

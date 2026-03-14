@@ -17,7 +17,7 @@ import { Prisma } from "@prisma/client"
 // ── File query helpers ────────────────────────────────────────────────────
 type Row = Record<string, string>
 
-function applyFileFilter(rows: Row[], filter: string): Row[] {
+function applyOneFilter(rows: Row[], filter: string): Row[] {
   const match = filter.match(/^(.+?)\s*(>=|<=|!=|>|<|=|contains)\s*(.+)$/)
   if (!match) return rows
   const [, colRaw, op, rawVal] = match
@@ -43,6 +43,11 @@ function applyFileFilter(rows: Row[], filter: string): Row[] {
   })
 }
 
+function applyFileFilter(rows: Row[], filter: string): Row[] {
+  const conditions = filter.split(/\s+AND\s+/i)
+  return conditions.reduce((r, cond) => applyOneFilter(r, cond.trim()), rows)
+}
+
 function applyGroupAggregate(
   rows: Row[],
   groupBy: string,
@@ -57,11 +62,11 @@ function applyGroupAggregate(
   return Array.from(groups.entries()).map(([key, groupRows]) => {
     const result: Row = { [groupBy]: key }
     for (const { column, fn } of agg) {
-      const nums = groupRows.map(r => parseFloat(r[column] ?? "0")).filter(v => !isNaN(v))
+      const nums = groupRows.map(r => parseFloat(r[column] ?? "")).filter(v => !isNaN(v))
       const total = nums.reduce((a, b) => a + b, 0)
       switch (fn) {
         case "sum":   result[`${column}_sum`]   = String(Math.round(total * 100) / 100); break
-        case "count": result[`${column}_count`] = String(nums.length); break
+        case "count": result[`${column}_count`] = String(groupRows.filter(r => (r[column] ?? "") !== "").length); break
         case "avg":   result[`${column}_avg`]   = String(nums.length ? Math.round(total / nums.length * 100) / 100 : 0); break
         case "min":   result[`${column}_min`]   = String(nums.length ? Math.min(...nums) : 0); break
         case "max":   result[`${column}_max`]   = String(nums.length ? Math.max(...nums) : 0); break
@@ -186,7 +191,26 @@ export async function executeToolCall(
       // Apply groupBy + aggregate
       const groupBy = toolInput.groupBy as string | undefined
       const aggregate = toolInput.aggregate as Array<{ column: string; fn: string }> | undefined
-      if (groupBy && aggregate?.length) rows = applyGroupAggregate(rows, groupBy, aggregate)
+      if (aggregate?.length) {
+        if (groupBy) {
+          rows = applyGroupAggregate(rows, groupBy, aggregate)
+        } else {
+          // Grand total — no groupBy, aggregate all rows into one result row
+          const result: Row = {}
+          for (const { column, fn } of aggregate) {
+            const nums = rows.map(r => parseFloat(r[column] ?? "")).filter(v => !isNaN(v))
+            const total = nums.reduce((a, b) => a + b, 0)
+            switch (fn) {
+              case "sum":   result[`${column}_sum`]   = String(Math.round(total * 100) / 100); break
+              case "count": result[`${column}_count`] = String(rows.filter(r => (r[column] ?? "") !== "").length); break
+              case "avg":   result[`${column}_avg`]   = String(nums.length ? Math.round(total / nums.length * 100) / 100 : 0); break
+              case "min":   result[`${column}_min`]   = String(nums.length ? Math.min(...nums) : 0); break
+              case "max":   result[`${column}_max`]   = String(nums.length ? Math.max(...nums) : 0); break
+            }
+          }
+          rows = [result]
+        }
+      }
 
       // Apply column selection
       const columns = toolInput.columns as string[] | undefined
@@ -209,12 +233,16 @@ export async function executeToolCall(
       const limit = (toolInput.limit as number | undefined) ?? 50
       const sliced = rows.slice(0, limit)
 
+      const resultColumns = sliced.length > 0
+        ? Object.keys(sliced[0])
+        : (columns ?? entry.columns)
+
       return {
         fileName: entry.fileName,
         totalRows: entry.rowCount,
         filtered: totalFiltered,
         returned: sliced.length,
-        columns: columns ?? entry.columns,
+        columns: resultColumns,
         data: sliced,
       }
     }
