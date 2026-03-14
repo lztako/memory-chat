@@ -131,7 +131,7 @@ type FileCacheEntry = {
   fileName: string
   columns: string[]
   rowCount: number
-  data: unknown
+  data: null          // no longer loaded — SQL queries against DB directly
   expiresAt: number
 }
 const _fileCache = new Map<string, FileCacheEntry>()
@@ -219,67 +219,49 @@ export async function executeToolCall(
     case "query_user_file": {
       const fileId = toolInput.fileId as string
 
-      // Load from cache or DB
+      // Load file metadata (lightweight — no data column)
       const cacheKey = `${userId}:${fileId}`
       const cached = _fileCache.get(cacheKey)
       let entry: FileCacheEntry
       if (cached && cached.expiresAt > Date.now()) {
         entry = cached
       } else {
-        const file = await fileRepo.getById(fileId, userId)
+        const file = await fileRepo.getMeta(fileId, userId)
         if (!file) return { error: "ไม่พบไฟล์ กรุณาตรวจสอบ fileId อีกครั้ง" }
-        entry = { fileName: file.fileName, columns: file.columns, rowCount: file.rowCount, data: file.data, expiresAt: Date.now() + FILE_CACHE_TTL_MS }
+        entry = { fileName: file.fileName, columns: file.columns, rowCount: file.rowCount, data: null, expiresAt: Date.now() + FILE_CACHE_TTL_MS }
         _fileCache.set(cacheKey, entry)
       }
 
-      let rows = entry.data as Row[]
-
-      // Apply filter
-      const filterStr = toolInput.filter as string | undefined
-      if (filterStr) rows = applyFileFilter(rows, filterStr)
-
-      // Apply groupBy + aggregate
+      // SQL query via jsonb_to_recordset — full PostgreSQL power
       const groupByRaw = toolInput.groupBy as string | string[] | undefined
-      const aggregate = toolInput.aggregate as Array<{ column: string; fn: string }> | undefined
-      if (aggregate?.length) {
-        if (groupByRaw) {
-          rows = applyGroupAggregate(rows, groupByRaw, aggregate)
-        } else {
-          // Grand total — no groupBy, aggregate all rows into one result row
-          const result: Row = {}
-          for (const { column, fn } of aggregate) {
-            const nums = rows.map(r => parseFloat(r[column] ?? "")).filter(v => !isNaN(v))
-            const total = nums.reduce((a, b) => a + b, 0)
-            switch (fn) {
-              case "sum":   result[`${column}_sum`]   = String(Math.round(total * 100) / 100); break
-              case "count": result[`${column}_count`] = String(rows.filter(r => (r[column] ?? "") !== "").length); break
-              case "avg":   result[`${column}_avg`]   = String(nums.length ? Math.round(total / nums.length * 100) / 100 : 0); break
-              case "min":   result[`${column}_min`]   = String(nums.length ? Math.min(...nums) : 0); break
-              case "max":   result[`${column}_max`]   = String(nums.length ? Math.max(...nums) : 0); break
-            }
-          }
-          rows = [result]
-        }
-      }
+      const aggregate  = toolInput.aggregate as Array<{ column: string; fn: string }> | undefined
+      const compute    = toolInput.compute as Record<string, string> | undefined
+      const having     = toolInput.having as string | undefined
+      const columns    = toolInput.columns as string[] | undefined
+      const limit      = (toolInput.limit as number | undefined) ?? 50
 
-      // Apply column selection
-      const columns = toolInput.columns as string[] | undefined
-      if (columns?.length) rows = rows.map(r => Object.fromEntries(columns.map(c => [c, r[c] ?? ""])) as Row)
-
-      // Apply orderBy
-      const orderBy = toolInput.orderBy as string | undefined
-      if (orderBy) {
-        const [col, dirStr] = orderBy.trim().split(/\s+/)
-        const desc = dirStr?.toLowerCase() === "desc"
-        rows = [...rows].sort((a, b) => {
-          const an = parseFloat(a[col] ?? ""), bn = parseFloat(b[col] ?? "")
-          const cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : String(a[col] ?? "").localeCompare(String(b[col] ?? ""))
-          return desc ? -cmp : cmp
+      let result: { columns: string[]; data: Row[]; filtered: number; returned: number }
+      try {
+        result = await fileRepo.querySQLFile({
+          fileId,
+          userId,
+          fileName: entry.fileName,
+          totalRowCount: entry.rowCount,
+          allowedCols: entry.columns,
+          filter:    toolInput.filter as string | undefined,
+          groupBy:   groupByRaw,
+          aggregate,
+          having:    having && !compute ? having : undefined, // HAVING on raw aggregates only
+          orderBy:   toolInput.orderBy as string | undefined,
+          limit,
+          columns,
         })
+      } catch (err) {
+        return { error: `Query failed: ${err instanceof Error ? err.message : String(err)}` }
       }
 
-      // Apply compute fields (derived from aggregate results)
-      const compute = toolInput.compute as Record<string, string> | undefined
+      // Post-process: compute derived fields (e.g. fill_rate = acc_sum / qty_contracted_sum * 100)
+      let rows = result.data
       if (compute && Object.keys(compute).length > 0) {
         rows = rows.map(row => {
           const out = { ...row }
@@ -289,28 +271,19 @@ export async function executeToolCall(
           }
           return out
         })
+        // HAVING on compute-derived fields (e.g. fill_rate_pct > 50) — applied after compute
+        if (having && compute) rows = applyFileFilter(rows, having)
       }
 
-      // Apply HAVING — filter on aggregated+computed result rows
-      const having = toolInput.having as string | undefined
-      if (having) rows = applyFileFilter(rows, having)
-
-      // Apply limit (default 50)
-      const totalFiltered = rows.length
-      const limit = (toolInput.limit as number | undefined) ?? 50
-      const sliced = rows.slice(0, limit)
-
-      const resultColumns = sliced.length > 0
-        ? Object.keys(sliced[0])
-        : (columns ?? entry.columns)
+      const resultColumns = rows.length > 0 ? Object.keys(rows[0]) : result.columns
 
       return {
         fileName: entry.fileName,
         totalRows: entry.rowCount,
-        filtered: totalFiltered,
-        returned: sliced.length,
+        filtered: result.filtered,
+        returned: rows.length,
         columns: resultColumns,
-        data: sliced,
+        data: rows,
       }
     }
 
