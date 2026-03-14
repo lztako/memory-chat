@@ -225,6 +225,41 @@ export const toolDefinitions: Anthropic.Tool[] = [
           additionalProperties: { type: "string" },
           description: 'คำนวณ derived fields จาก aggregate results เช่น {"fill_rate": "acc_sum / qty_contracted_sum * 100"} — ใช้ชื่อ column จาก aggregate result เป็น operands ได้เลย',
         },
+        joinFile: {
+          type: "object",
+          description: "JOIN กับไฟล์อื่นของ user เดียวกัน — ใช้เมื่อต้องการรวมข้อมูลจาก 2 ไฟล์ เช่น contracts + shipments",
+          properties: {
+            fileId: { type: "string", description: "ID ของไฟล์ที่จะ JOIN" },
+            on: {
+              description: 'column ที่ใช้ JOIN — ถ้า column ชื่อเดียวกัน: "customer" | ถ้าต่างกัน: ["customer", "client_name"]',
+              oneOf: [
+                { type: "string" },
+                { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2 },
+              ],
+            },
+            type: { type: "string", enum: ["inner", "left"], description: "inner = เฉพาะที่ match | left = ทั้งหมดจากไฟล์หลัก (default: inner)" },
+            columns: { type: "array", items: { type: "string" }, description: "เลือก columns จากไฟล์ที่ JOIN (ถ้าไม่ระบุจะเอาทุก column)" },
+          },
+          required: ["fileId", "on"],
+        },
+        windowFns: {
+          type: "array",
+          description: "Window functions เช่น RANK(), DENSE_RANK(), running sum — ใช้เมื่อต้องการ ranking หรือ cumulative ในกลุ่มเดียวกัน",
+          items: {
+            type: "object",
+            properties: {
+              fn: { type: "string", enum: ["rank", "dense_rank", "row_number", "sum", "avg", "lag", "lead"], description: "Window function ที่ต้องการ" },
+              column: { type: "string", description: "column ที่คำนวณ (ต้องระบุสำหรับ sum/avg/lag/lead)" },
+              partitionBy: {
+                description: "แบ่ง window ตาม column — เช่น 'team' หรือ ['team', 'year']",
+                oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+              },
+              orderBy: { type: "string", description: 'เรียงใน window เช่น "qty_contracted_sum desc"' },
+              alias: { type: "string", description: "ชื่อ column ผลลัพธ์ เช่น 'rank', 'running_total'" },
+            },
+            required: ["fn", "alias"],
+          },
+        },
       },
       required: ["fileId"],
     },

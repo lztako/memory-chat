@@ -66,7 +66,7 @@ export const fileRepo = {
     return prisma.userFile.deleteMany({ where: { id, userId } })
   },
 
-  // ── SQL JSONB query engine ──────────────────────────────────────────────
+  // ── SQL JSONB query engine — Phase 1+2 ────────────────────────────────
   async querySQLFile(params: {
     fileId: string
     userId: string
@@ -80,45 +80,45 @@ export const fileRepo = {
     orderBy?: string
     limit?: number
     columns?: string[]
+    // Phase 2: JOIN + window functions
+    joinFile?: {
+      fileId: string
+      allowedCols: string[]
+      on: string | [string, string]   // "customer" or ["customer","client_name"]
+      type?: "inner" | "left"
+      columns?: string[]              // columns to bring from joined file
+    }
+    windowFns?: Array<{
+      fn: "rank" | "dense_rank" | "row_number" | "sum" | "avg" | "lag" | "lead"
+      column?: string                 // required for sum/avg/lag/lead
+      partitionBy?: string | string[]
+      orderBy?: string                // "col asc" or "col desc"
+      alias: string
+    }>
   }): Promise<{
     columns: string[]
     data: Record<string, string>[]
     filtered: number
     returned: number
   }> {
-    const { fileId, userId, allowedCols, filter, groupBy, aggregate, having, orderBy, limit, columns } = params
+    const {
+      fileId, userId, allowedCols,
+      filter, groupBy, aggregate, having, orderBy, limit, columns,
+      joinFile, windowFns,
+    } = params
+
     const vals: unknown[] = [fileId, userId]
-    let p = 3 // next param index ($1=fileId, $2=userId)
+    let p = 3 // $1=fileId, $2=userId, next starts at $3
 
     const groupCols = groupBy ? (Array.isArray(groupBy) ? groupBy : [groupBy]) : []
     const hasAgg = !!(aggregate?.length)
+    const hasJoin = !!joinFile
+    const hasWin = !!(windowFns?.length)
 
-    // ── Column declarations for jsonb_to_recordset ──────────────────────
-    const colDecls = allowedCols.map(c => `${pgId(c)} TEXT`).join(", ")
+    // ── Main file column declarations ────────────────────────────────────
+    const mainColDecls = allowedCols.map(c => `${pgId(c)} TEXT`).join(", ")
 
-    // ── SELECT clause ────────────────────────────────────────────────────
-    let selectParts: string[]
-    if (!hasAgg) {
-      // raw rows — select specific columns or all
-      const pickCols = columns?.length ? columns.filter(c => allowedCols.includes(c)) : allowedCols
-      selectParts = pickCols.map(c => `r.${pgId(c)}`)
-    } else {
-      // groupBy cols first
-      selectParts = groupCols.map(c => {
-        safeCol(c, allowedCols)
-        return `r.${pgId(c)}`
-      })
-      // aggregate expressions
-      for (const { column, fn } of aggregate!) {
-        safeCol(column, allowedCols)
-        const alias = pgId(`${column}_${fn}`)
-        selectParts.push(`${aggFnSQL(fn, `r.${pgId(column)}`)} AS ${alias}`)
-      }
-    }
-    // always include filtered count via window function
-    selectParts.push(`COUNT(*) OVER() AS "__filtered"`)
-
-    // ── WHERE clause ─────────────────────────────────────────────────────
+    // ── WHERE clause (on main file rows) ─────────────────────────────────
     let whereSQL = ""
     if (filter) {
       const res = buildFilterSQL(filter, allowedCols, "r.", p)
@@ -127,54 +127,166 @@ export const fileRepo = {
       p = res.pEnd
     }
 
-    // ── GROUP BY clause ───────────────────────────────────────────────────
+    // ── JOIN file setup ───────────────────────────────────────────────────
+    let joinFileParamIdx = -1
+    let joinColDecls = ""
+    let joinOnSQL = ""
+    let joinCols: string[] = []
+    if (hasJoin) {
+      vals.push(joinFile!.fileId, userId)
+      joinFileParamIdx = p
+      p += 2
+
+      const jf = joinFile!
+      joinColDecls = jf.allowedCols.map(c => `${pgId(c)} TEXT`).join(", ")
+
+      // columns to select from join file
+      joinCols = jf.columns?.length
+        ? jf.columns.filter(c => jf.allowedCols.includes(c))
+        : jf.allowedCols
+
+      // ON condition
+      const [mainOn, joinOn] = Array.isArray(jf.on) ? jf.on : [jf.on, jf.on]
+      safeCol(mainOn, allowedCols)
+      safeCol(joinOn, jf.allowedCols)
+      joinOnSQL = `LOWER(m.${pgId(mainOn)}) = LOWER(j.${pgId(joinOn)})`
+    }
+
+    // ── SELECT, GROUP BY, window functions ───────────────────────────────
+    // For non-JOIN: columns referenced as r.col
+    // For JOIN: combined CTE flattens all cols — outer query uses bare col names
+    const allCols = hasJoin ? [...allowedCols, ...joinCols] : allowedCols
+    const colRef = (col: string) => hasJoin ? pgId(col) : `r.${pgId(col)}`
+
+    let selectParts: string[]
+    if (!hasAgg) {
+      const pickCols = columns?.length ? columns.filter(c => allCols.includes(c)) : allCols
+      selectParts = pickCols.map(colRef)
+    } else {
+      selectParts = groupCols.map(c => {
+        if (!allCols.includes(c)) throw new Error(`groupBy column "${c}" not found in any file`)
+        return colRef(c)
+      })
+      for (const { column, fn } of aggregate!) {
+        if (!allCols.includes(column)) throw new Error(`aggregate column "${column}" not found in any file`)
+        selectParts.push(`${aggFnSQL(fn, colRef(column))} AS ${pgId(`${column}_${fn}`)}`)
+      }
+    }
+
+    // window functions
+    if (hasWin) {
+      for (const wf of windowFns!) {
+        safeAlias(wf.alias)
+        const overParts: string[] = []
+        if (wf.partitionBy) {
+          const pbCols = Array.isArray(wf.partitionBy) ? wf.partitionBy : [wf.partitionBy]
+          overParts.push(`PARTITION BY ${pbCols.map(colRef).join(", ")}`)
+        }
+        if (wf.orderBy) {
+          const [obCol, obDir] = wf.orderBy.trim().split(/\s+/)
+          const dir = obDir?.toLowerCase() === "desc" ? "DESC" : "ASC"
+          if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(obCol)) {
+            const obExpr = allCols.includes(obCol) ? colRef(obCol) : pgId(obCol)
+            overParts.push(`ORDER BY ${obExpr} ${dir}`)
+          }
+        }
+        const over = `OVER (${overParts.join(" ")})`
+        let winExpr: string
+        switch (wf.fn) {
+          case "rank":       winExpr = `RANK() ${over}`; break
+          case "dense_rank": winExpr = `DENSE_RANK() ${over}`; break
+          case "row_number": winExpr = `ROW_NUMBER() ${over}`; break
+          default: {
+            if (!wf.column) throw new Error(`window fn "${wf.fn}" requires column`)
+            if (!allCols.includes(wf.column)) throw new Error(`window column "${wf.column}" not found`)
+            const castExpr = `CAST(NULLIF(${colRef(wf.column)},'') AS NUMERIC)`
+            winExpr = `${wf.fn.toUpperCase()}(${castExpr}) ${over}`
+          }
+        }
+        selectParts.push(`${winExpr} AS ${pgId(wf.alias)}`)
+      }
+    }
+    selectParts.push(`COUNT(*) OVER() AS "__filtered"`)
+
+    // GROUP BY
     const groupBySQL = groupCols.length
-      ? `GROUP BY ${groupCols.map(c => `r.${pgId(c)}`).join(", ")}`
+      ? `GROUP BY ${groupCols.map(colRef).join(", ")}`
       : ""
 
-    // ── HAVING clause ─────────────────────────────────────────────────────
+    // HAVING
     let havingSQL = ""
     if (having && hasAgg) {
-      const res = buildFilterSQL(having, [], "", p) // no col whitelist — aliases only
+      const res = buildFilterSQL(having, [], "", p)
       havingSQL = `HAVING ${res.sql}`
       vals.push(...res.vals)
       p = res.pEnd
     }
 
-    // ── ORDER BY clause ───────────────────────────────────────────────────
+    // ORDER BY
     let orderBySQL = ""
     if (orderBy) {
-      const parts = orderBy.trim().split(/\s+/)
-      const col = parts[0]
-      const dir = parts[1]?.toLowerCase() === "desc" ? "DESC" : "ASC"
-      // allow raw cols or aggregate aliases (alphanumeric + underscore)
-      if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col)) {
-        orderBySQL = `ORDER BY ${pgId(col)} ${dir}`
+      const [obCol, obDir] = orderBy.trim().split(/\s+/)
+      const dir = obDir?.toLowerCase() === "desc" ? "DESC" : "ASC"
+      if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(obCol)) {
+        orderBySQL = `ORDER BY ${pgId(obCol)} ${dir}`
       }
     }
 
-    // ── LIMIT ─────────────────────────────────────────────────────────────
+    // LIMIT
     const limitVal = limit ?? 50
     vals.push(limitVal)
     const limitSQL = `LIMIT $${p}`
-    p++
 
-    // ── Full query ────────────────────────────────────────────────────────
-    const sql = `
-      SELECT ${selectParts.join(", ")}
-      FROM "UserFile" f
-      CROSS JOIN LATERAL jsonb_to_recordset(f.data) AS r(${colDecls})
-      WHERE f.id = $1 AND f."userId" = $2
-      ${whereSQL}
-      ${groupBySQL}
-      ${havingSQL}
-      ${orderBySQL}
-      ${limitSQL}
-    `
+    // ── Assemble SQL ──────────────────────────────────────────────────────
+    let sql: string
+
+    if (hasJoin) {
+      const jf = joinFile!
+      const joinType = jf.type === "left" ? "LEFT JOIN" : "INNER JOIN"
+      const joinSelectCols = joinCols.map(c => `j.${pgId(c)}`).join(", ")
+
+      sql = `
+        WITH main AS (
+          SELECT r.*
+          FROM "UserFile" f
+          CROSS JOIN LATERAL jsonb_to_recordset(f.data) AS r(${mainColDecls})
+          WHERE f.id = $1 AND f."userId" = $2
+          ${whereSQL}
+        ),
+        joined_file AS (
+          SELECT r.*
+          FROM "UserFile" f
+          CROSS JOIN LATERAL jsonb_to_recordset(f.data) AS r(${joinColDecls})
+          WHERE f.id = $${joinFileParamIdx} AND f."userId" = $${joinFileParamIdx + 1}
+        ),
+        combined AS (
+          SELECT m.*, ${joinSelectCols}
+          FROM main m
+          ${joinType} joined_file j ON ${joinOnSQL}
+        )
+        SELECT ${selectParts.join(", ")}
+        FROM combined
+        ${groupBySQL}
+        ${havingSQL}
+        ${orderBySQL}
+        ${limitSQL}
+      `
+    } else {
+      sql = `
+        SELECT ${selectParts.join(", ")}
+        FROM "UserFile" f
+        CROSS JOIN LATERAL jsonb_to_recordset(f.data) AS r(${mainColDecls})
+        WHERE f.id = $1 AND f."userId" = $2
+        ${whereSQL}
+        ${groupBySQL}
+        ${havingSQL}
+        ${orderBySQL}
+        ${limitSQL}
+      `
+    }
 
     const rawRows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(sql, ...vals)
 
-    // Extract filtered count + strip __filtered from result
     const filtered = rawRows.length > 0 ? Number(rawRows[0]["__filtered"] ?? 0) : 0
     const data = rawRows.map(row => {
       const out: Record<string, string> = {}
@@ -190,7 +302,7 @@ export const fileRepo = {
   },
 }
 
-// ── SQL builder helpers (module-private) ─────────────────────────────────────
+// ── SQL builder helpers ───────────────────────────────────────────────────────
 
 function pgId(name: string): string {
   return `"${name.replace(/"/g, '""')}"`
@@ -203,7 +315,7 @@ function safeCol(col: string, allowed: string[]): string {
 }
 
 function safeAlias(alias: string): string {
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(alias.trim())) throw new Error(`Invalid column alias: "${alias}"`)
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(alias.trim())) throw new Error(`Invalid alias: "${alias}"`)
   return alias.trim()
 }
 
@@ -221,7 +333,7 @@ function aggFnSQL(fn: string, colExpr: string): string {
 function singleCondSQL(
   cond: string,
   allowed: string[],
-  prefix: string, // "r." for WHERE (raw cols), "" for HAVING (aggregate aliases)
+  prefix: string,
   pStart: number
 ): { sql: string; vals: unknown[]; pEnd: number } {
   const nullM = cond.match(/^(.+?)\s+IS\s+NULL$/i)
@@ -265,7 +377,6 @@ function singleCondSQL(
       default:         return { sql: "TRUE", vals: [], pEnd: pStart }
     }
   } else {
-    // HAVING on aggregate alias — no col whitelist (alias is generated by our code)
     const alias = safeAlias(colRaw.trim())
     switch (op) {
       case "=":  return { sql: `${pgId(alias)} = $${pn}::numeric`, vals: [val], pEnd: pn + 1 }

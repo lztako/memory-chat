@@ -239,6 +239,17 @@ export async function executeToolCall(
       const having     = toolInput.having as string | undefined
       const columns    = toolInput.columns as string[] | undefined
       const limit      = (toolInput.limit as number | undefined) ?? 50
+      const windowFns  = toolInput.windowFns as Array<{ fn: "rank" | "dense_rank" | "row_number" | "sum" | "avg" | "lag" | "lead"; column?: string; partitionBy?: string | string[]; orderBy?: string; alias: string }> | undefined
+
+      // Phase 2: load join file metadata if requested
+      type JoinFileInput = { fileId: string; on: string | [string, string]; type?: "inner" | "left"; columns?: string[] }
+      const joinFileInput = toolInput.joinFile as JoinFileInput | undefined
+      let joinFileParsed: { fileId: string; allowedCols: string[]; on: string | [string, string]; type?: "inner" | "left"; columns?: string[] } | undefined
+      if (joinFileInput) {
+        const jMeta = await fileRepo.getMeta(joinFileInput.fileId, userId)
+        if (!jMeta) return { error: `ไม่พบ joinFile id="${joinFileInput.fileId}"` }
+        joinFileParsed = { fileId: joinFileInput.fileId, allowedCols: jMeta.columns, on: joinFileInput.on, type: joinFileInput.type, columns: joinFileInput.columns }
+      }
 
       let result: { columns: string[]; data: Row[]; filtered: number; returned: number }
       try {
@@ -255,6 +266,8 @@ export async function executeToolCall(
           orderBy:   toolInput.orderBy as string | undefined,
           limit,
           columns,
+          joinFile:  joinFileParsed,
+          windowFns,
         })
       } catch (err) {
         return { error: `Query failed: ${err instanceof Error ? err.message : String(err)}` }
