@@ -122,21 +122,58 @@ if (existing) {
   console.log(`  Created: ${AGENT_NAME} (${agent.id})`)
 }
 
-// ── Update skill solution to delegate to agent ──────────────────────────────
-console.log('\n[2] Updating trr_monitoring skill to delegate to agent...')
+// ── Update skill solution — direct query (no agent delegation) ───────────────
+console.log('\n[2] Updating trr_monitoring skill...')
 
 const newSolution = `# TRR Monitoring Skill
 
-เมื่อ user ถามเรื่อง monitoring (ยอดสั่ง/ส่ง/คงเหลือ/fill rate/overdue/timeline/สัญญา) ให้ทำดังนี้:
+เมื่อ user ถามเรื่อง monitoring ให้เรียก query_user_file โดยตรง — ไม่ต้องผ่าน use_agent
 
-**เรียก use_agent ทันที:**
-- agentName: "${AGENT_NAME}"
-- task: คำถามของ user (พร้อม context เช่น ทีม ปี ลูกค้า)
+## ไฟล์
+fileId ของ contracts file อยู่ใน system prompt section "ไฟล์ข้อมูลของ user" (fileType: shipment, ชื่อขึ้นต้นด้วย monitoring)
+ถ้าไม่เห็น → เรียก list_user_files ก่อน
 
-Agent นี้มีความรู้ด้าน schema, query patterns, business rules ครบแล้ว
-ไม่ต้องเรียก read_resource หรือ query_user_file เอง — ให้ agent จัดการทั้งหมด
+## Schema
+| column | ความหมาย |
+|--------|-----------|
+| team | ทีม (RKX, PSR) |
+| year | ปี string ("2025", "2026") |
+| customer | ชื่อลูกค้า |
+| contract_no | เลขสัญญา |
+| qty_contracted | ยอดสั่งซื้อ (MT) |
+| acc | ส่งจริงสะสม (MT) |
+| bal | คงเหลือ (MT) |
+| status | Completed / Pending / Overdue |
+| shipment_month | เดือนที่ส่ง (YYYY-MM-DD) |
+| shipment_qty | ปริมาณส่งเดือนนั้น (MT) |
 
-ส่งผลลัพธ์จาก agent กลับไปยัง user โดยตรง ไม่ต้องแก้ไข`
+## Query Patterns
+| คำถาม | approach |
+|-------|----------|
+| ยอดรวม | aggregate: sum qty_contracted, sum acc, sum bal |
+| แยกทีม | groupBy: team + aggregate |
+| fill rate | aggregate sum acc + sum qty_contracted → compute: {"fill_rate_pct": "acc_sum / qty_contracted_sum * 100"} |
+| fill rate < X% | + having: "fill_rate_pct < X" |
+| Overdue/Pending | filter: status = Overdue OR status = Pending |
+| แยกลูกค้า | groupBy: customer + aggregate + orderBy |
+| timeline | groupBy: shipment_month, aggregate: sum shipment_qty, limit: 200 |
+| นับสัญญา | aggregate: count contract_no |
+
+## กฎสำคัญ
+- **ห้ามตอบตัวเลขโดยไม่มี tool call ก่อน** — query ก่อนเสมอ
+- Timeline: ใช้ limit: 200 เสมอ
+- year ต้องเป็น string: filter "year = 2026" (ไม่ใช่ 2026)
+- ห้าม sum qty_contracted จาก rows ที่มี shipment_month (ค่าซ้ำ)
+- ห้าม narrate process — แสดงเฉพาะผลลัพธ์
+
+## Business Context
+- Fill rate 100% = Completed | <100% + เลยกำหนด = Overdue | <100% + ยังไม่ถึงกำหนด = Pending
+- RKX: Retail + Wholesale | PSR: Wholesale เป็นหลัก
+
+## วิธีตอบ
+- ภาษาธรรมชาติ ไม่พูดชื่อ column หรือชื่อไฟล์
+- ใส่หน่วย MT ทุกครั้ง
+- Fill rate → บอก context ว่าดีหรือไม่`
 
 const skill = await prisma.userSkill.findFirst({
   where: { userId, name: SKILL_NAME },
@@ -153,8 +190,8 @@ if (skill) {
 }
 
 console.log('\n✓ Done')
-console.log(`  Agent ID: ${agent.id}`)
-console.log(`  Tools: list_user_files, query_user_file, render_artifact`)
-console.log(`  Flow: user → skill trigger → use_agent → TRR Analyst → query_user_file → answer`)
+console.log(`  Agent ID: ${agent.id} (kept for complex multi-step tasks)`)
+console.log(`  Flow (simple): user → skill trigger → Sonnet → query_user_file → answer`)
+console.log(`  Flow (complex): user → skill trigger → Sonnet → use_agent → Haiku → answer`)
 
 await prisma.$disconnect()
