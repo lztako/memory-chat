@@ -289,12 +289,16 @@ export async function executeToolCall(
       }
 
       const resultColumns = rows.length > 0 ? Object.keys(rows[0]) : result.columns
+      const truncated = result.filtered > rows.length
 
       return {
         fileName: entry.fileName,
         totalRows: entry.rowCount,
         filtered: result.filtered,
         returned: rows.length,
+        ...(truncated && {
+          warning: `ผลลัพธ์ถูกตัดที่ ${rows.length} rows (มีทั้งหมด ${result.filtered} rows ที่ match) — เรียกใหม่ด้วย limit: ${result.filtered} เพื่อดูทั้งหมด`,
+        }),
         columns: resultColumns,
         data: rows,
       }
