@@ -182,7 +182,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
         },
         filter: {
           type: "string",
-          description: 'เงื่อนไข filter เช่น "status = Overdue", "usd > 10000", "customer contains Wilmar", "team = PSR"',
+          description: 'เงื่อนไข filter — AND: "team = PSR AND status = Overdue" | OR: "team = RKX OR team = PSR" | Mixed: "team = RKX OR team = PSR AND year = 2026" | NULL: "shipment_month IS NULL" | NOT NULL: "shipment_month IS NOT NULL"',
         },
         columns: {
           type: "array",
@@ -190,8 +190,11 @@ export const toolDefinitions: Anthropic.Tool[] = [
           description: "เลือกเฉพาะ columns ที่ต้องการ ถ้าไม่ระบุจะคืนทุก column",
         },
         groupBy: {
-          type: "string",
-          description: "group ข้อมูลตาม column นี้ ใช้ร่วมกับ aggregate เช่น 'customer', 'team', 'status'",
+          oneOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" } },
+          ],
+          description: "group ตาม column เดียว ('team') หรือหลาย column (['team', 'year']) ใช้ร่วมกับ aggregate",
         },
         aggregate: {
           type: "array",

@@ -31,6 +31,19 @@ function evaluateExpr(expr: string, row: Row): number {
 }
 
 function applyOneFilter(rows: Row[], filter: string): Row[] {
+  // IS NULL
+  const nullMatch = filter.match(/^(.+?)\s+IS\s+NULL$/i)
+  if (nullMatch) {
+    const col = nullMatch[1].trim()
+    return rows.filter(row => row[col] === undefined || row[col] === "" || row[col] === null)
+  }
+  // IS NOT NULL
+  const notNullMatch = filter.match(/^(.+?)\s+IS\s+NOT\s+NULL$/i)
+  if (notNullMatch) {
+    const col = notNullMatch[1].trim()
+    return rows.filter(row => row[col] !== undefined && row[col] !== "" && row[col] !== null)
+  }
+  // comparison operators
   const match = filter.match(/^(.+?)\s*(>=|<=|!=|>|<|=|contains)\s*(.+)$/)
   if (!match) return rows
   const [, colRaw, op, rawVal] = match
@@ -57,23 +70,47 @@ function applyOneFilter(rows: Row[], filter: string): Row[] {
 }
 
 function applyFileFilter(rows: Row[], filter: string): Row[] {
+  const hasOr  = /\s+OR\s+/i.test(filter)
+  const hasAnd = /\s+AND\s+/i.test(filter)
+
+  if (hasOr && !hasAnd) {
+    // Pure OR — any condition matches
+    const conditions = filter.split(/\s+OR\s+/i)
+    return rows.filter(row => conditions.some(cond => applyOneFilter([row], cond.trim()).length > 0))
+  }
+
+  if (hasOr && hasAnd) {
+    // Mixed: split by OR first, each OR-branch is evaluated with AND internally
+    const orBranches = filter.split(/\s+OR\s+/i)
+    return rows.filter(row =>
+      orBranches.some(branch => {
+        const andConds = branch.trim().split(/\s+AND\s+/i)
+        return andConds.every(cond => applyOneFilter([row], cond.trim()).length > 0)
+      })
+    )
+  }
+
+  // Default: pure AND
   const conditions = filter.split(/\s+AND\s+/i)
   return conditions.reduce((r, cond) => applyOneFilter(r, cond.trim()), rows)
 }
 
 function applyGroupAggregate(
   rows: Row[],
-  groupBy: string,
+  groupBy: string | string[],
   agg: Array<{ column: string; fn: string }>
 ): Row[] {
+  const groupCols = Array.isArray(groupBy) ? groupBy : [groupBy]
   const groups = new Map<string, Row[]>()
   for (const row of rows) {
-    const key = row[groupBy] ?? "Unknown"
+    const key = groupCols.map(col => row[col] ?? "Unknown").join("\u0000")
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(row)
   }
   return Array.from(groups.entries()).map(([key, groupRows]) => {
-    const result: Row = { [groupBy]: key }
+    const keyParts = key.split("\u0000")
+    const result: Row = {}
+    groupCols.forEach((col, i) => { result[col] = keyParts[i] })
     for (const { column, fn } of agg) {
       const nums = groupRows.map(r => parseFloat(r[column] ?? "")).filter(v => !isNaN(v))
       const total = nums.reduce((a, b) => a + b, 0)
@@ -202,11 +239,11 @@ export async function executeToolCall(
       if (filterStr) rows = applyFileFilter(rows, filterStr)
 
       // Apply groupBy + aggregate
-      const groupBy = toolInput.groupBy as string | undefined
+      const groupByRaw = toolInput.groupBy as string | string[] | undefined
       const aggregate = toolInput.aggregate as Array<{ column: string; fn: string }> | undefined
       if (aggregate?.length) {
-        if (groupBy) {
-          rows = applyGroupAggregate(rows, groupBy, aggregate)
+        if (groupByRaw) {
+          rows = applyGroupAggregate(rows, groupByRaw, aggregate)
         } else {
           // Grand total — no groupBy, aggregate all rows into one result row
           const result: Row = {}
