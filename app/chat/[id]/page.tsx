@@ -322,7 +322,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             <div style={{ textAlign: "center", color: "var(--text3)", marginTop: 64, fontSize: 13 }}>Start a conversation...</div>
           ) : (
             messages.map((m, i) => (
-              <div key={i} style={{ padding: "0 32px", maxWidth: 960, width: "100%", margin: "0 auto", boxSizing: "border-box", paddingBottom: m.role === "user" ? 24 : 28 }}>
+              <div key={i} style={{ padding: "0 32px", maxWidth: 800, width: "100%", margin: "0 auto", boxSizing: "border-box", paddingBottom: m.role === "user" ? 24 : 28 }}>
                 <MessageBubble
                   role={m.role}
                   content={m.content}
