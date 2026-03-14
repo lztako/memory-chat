@@ -291,6 +291,10 @@ export async function executeToolCall(
         })
       }
 
+      // Apply HAVING — filter on aggregated+computed result rows
+      const having = toolInput.having as string | undefined
+      if (having) rows = applyFileFilter(rows, having)
+
       // Apply limit (default 50)
       const totalFiltered = rows.length
       const limit = (toolInput.limit as number | undefined) ?? 50

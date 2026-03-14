@@ -208,6 +208,10 @@ export const toolDefinitions: Anthropic.Tool[] = [
           },
           description: "คำนวณ aggregate เช่น [{column: 'usd', fn: 'sum'}, {column: 'ton', fn: 'count'}]",
         },
+        having: {
+          type: "string",
+          description: 'filter หลัง groupBy+aggregate — ใช้ชื่อ column จาก aggregate result เช่น "qty_contracted_sum > 10000", "fill_rate_pct >= 50", "acc_sum IS NOT NULL"',
+        },
         orderBy: {
           type: "string",
           description: 'เรียงลำดับ เช่น "usd desc", "bl_date asc", "shipped desc"',
