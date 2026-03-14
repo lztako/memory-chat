@@ -171,6 +171,50 @@ export default function AdminUserDetailPage() {
   const [replacing, setReplacing] = useState(false)
   const replaceInputRef = useRef<HTMLInputElement>(null)
 
+  // Agent editor state
+  const AGENT_FORM_DEFAULT = { name: "", description: "", systemPrompt: "", tools: "", model: "claude-haiku-4-5-20251001", maxTurns: "5" }
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [agentForm, setAgentForm] = useState(AGENT_FORM_DEFAULT)
+  const [showNewAgent, setShowNewAgent] = useState(false)
+  const [savingAgent, setSavingAgent] = useState(false)
+  const [agentSaved, setAgentSaved] = useState(false)
+  const [confirmDeleteAgent, setConfirmDeleteAgent] = useState(false)
+
+  function openAgentEditor(a: AgentEntry) {
+    setSelectedAgentId(a.id)
+    setShowNewAgent(false)
+    setAgentForm({ name: a.name, description: a.description, systemPrompt: a.systemPrompt, tools: a.tools.join(", "), model: a.model, maxTurns: String(a.maxTurns ?? 5) })
+    setConfirmDeleteAgent(false); setAgentSaved(false)
+  }
+
+  function openNewAgent() {
+    setSelectedAgentId(null); setShowNewAgent(true)
+    setAgentForm(AGENT_FORM_DEFAULT); setConfirmDeleteAgent(false); setAgentSaved(false)
+  }
+
+  async function handleSaveAgent(e: React.FormEvent) {
+    e.preventDefault(); setSavingAgent(true)
+    const tools = agentForm.tools.split(",").map(t => t.trim()).filter(Boolean)
+    const payload = { name: agentForm.name, description: agentForm.description, systemPrompt: agentForm.systemPrompt, tools, model: agentForm.model, maxTurns: parseInt(agentForm.maxTurns) || 5 }
+    try {
+      if (showNewAgent) {
+        await fetch(`/api/admin/users/${userId}/agents`, { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        setShowNewAgent(false); setAgentForm(AGENT_FORM_DEFAULT)
+      } else if (selectedAgentId) {
+        await fetch(`/api/admin/users/${userId}/agents`, { method: "PATCH", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ agentId: selectedAgentId, ...payload }) })
+        setAgentSaved(true); setTimeout(() => setAgentSaved(false), 1800)
+      }
+      await load()
+    } finally { setSavingAgent(false) }
+  }
+
+  async function handleDeleteAgent() {
+    if (!selectedAgentId) return
+    await fetch(`/api/admin/users/${userId}/agents?agentId=${selectedAgentId}`, { method: "DELETE", headers: { Authorization: `Bearer ${secret}` } })
+    setSelectedAgentId(null); setConfirmDeleteAgent(false); setAgentForm(AGENT_FORM_DEFAULT)
+    await load()
+  }
+
   async function handleReplace(e: React.FormEvent) {
     e.preventDefault()
     const file = replaceInputRef.current?.files?.[0]
@@ -677,105 +721,219 @@ export default function AdminUserDetailPage() {
       )}
 
       {/* AGENTS TAB */}
-      {tab === "agents" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {tab === "agents" && (() => {
+        const agentInputStyle: React.CSSProperties = {
+          width: "100%", boxSizing: "border-box", padding: "7px 10px",
+          borderRadius: 6, border: "1.5px solid var(--border)",
+          background: "var(--bg)", color: "var(--text)",
+          fontSize: 12, fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none",
+        }
+        const agentLabelStyle: React.CSSProperties = {
+          fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace",
+          letterSpacing: ".08em", textTransform: "uppercase" as const,
+          color: "var(--text3)", marginBottom: 4, display: "block",
+        }
+        const tagStyle = (color: string): React.CSSProperties => ({
+          fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
+          padding: "2px 6px", borderRadius: 3,
+          background: "var(--surface2)", border: "1px solid var(--border)", color,
+        })
+        const isEditing = showNewAgent || selectedAgentId !== null
 
-          {/* Global agents */}
-          <div>
-            <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 10 }}>
-              Global Agents — available to all users
-            </div>
-            <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-              {agents.global.length === 0 ? (
-                <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No global agents</div>
-              ) : agents.global.map((a, i) => (
-                <div key={a.id} style={{
-                  padding: "12px 16px",
-                  borderBottom: i < agents.global.length - 1 ? "1px solid var(--border)" : "none",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.name}</span>
-                    <span style={{
-                      fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
-                      padding: "2px 6px", borderRadius: 3,
-                      background: "var(--surface2)", border: "1px solid var(--border)",
-                      color: a.isActive ? "var(--green)" : "var(--text3)",
-                    }}>{a.isActive ? "active" : "inactive"}</span>
-                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
-                      {a.model.includes("haiku") ? "haiku" : a.model.includes("sonnet") ? "sonnet" : a.model}
-                    </span>
-                    <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
-                      max {a.maxTurns ?? 5} turns
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6, lineHeight: 1.5 }}>{a.description.split(".")[0]}.</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {a.tools.map(t => (
-                      <span key={t} style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--blue)" }}>{t}</span>
-                    ))}
-                  </div>
+        return (
+          <div style={{ display: "flex", gap: 20 }}>
+
+            {/* Left: Lists */}
+            <div style={{ width: isEditing ? 300 : "100%", flexShrink: 0, display: "flex", flexDirection: "column", gap: 16, transition: "width .15s" }}>
+
+              {/* Global agents */}
+              <div>
+                <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 8 }}>
+                  Global Agents
                 </div>
-              ))}
-            </div>
-          </div>
+                <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                  {agents.global.length === 0 ? (
+                    <div style={{ padding: "20px 16px", textAlign: "center", color: "var(--text3)", fontSize: 12 }}>No global agents</div>
+                  ) : agents.global.map((a, i) => (
+                    <div key={a.id} style={{ padding: "10px 14px", borderBottom: i < agents.global.length - 1 ? "1px solid var(--border)" : "none", opacity: 0.65 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{a.name}</span>
+                        <span style={tagStyle("var(--text3)")}>{a.model.includes("haiku") ? "haiku" : "sonnet"}</span>
+                        <span style={tagStyle("var(--text3)")}>×{a.maxTurns ?? 5}</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text3)", lineHeight: 1.4 }}>{a.description.split(".")[0]}.</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          {/* Per-user agents */}
-          <div>
-            <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)", marginBottom: 10 }}>
-              User-specific Agents
-            </div>
-            <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-              {agents.perUser.length === 0 ? (
-                <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No user-specific agents</div>
-              ) : agents.perUser.map((a, i) => (
-                <div key={a.id} style={{
-                  padding: "12px 16px",
-                  borderBottom: i < agents.perUser.length - 1 ? "1px solid var(--border)" : "none",
-                  display: "flex", alignItems: "flex-start", gap: 12,
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.name}</span>
-                      <span style={{
-                        fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace",
-                        padding: "2px 6px", borderRadius: 3,
-                        background: "var(--surface2)", border: "1px solid var(--border)",
-                        color: a.isActive ? "var(--green)" : "var(--text3)",
-                      }}>{a.isActive ? "active" : "inactive"}</span>
-                      <span style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text3)" }}>
-                        max {a.maxTurns ?? 5} turns
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {a.tools.map(t => (
-                        <span key={t} style={{ fontSize: 9, fontFamily: "var(--font-ibm-plex-mono), monospace", padding: "2px 6px", borderRadius: 3, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--blue)" }}>{t}</span>
-                      ))}
-                    </div>
+              {/* Per-user agents */}
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--text3)" }}>
+                    User Agents
                   </div>
-                  <button
-                    onClick={async () => {
-                      await fetch(`/api/admin/users/${userId}/agents`, {
-                        method: "PATCH",
-                        headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
-                        body: JSON.stringify({ agentId: a.id, isActive: !a.isActive }),
-                      })
-                      await load()
-                    }}
-                    style={{
-                      fontSize: 10, padding: "3px 8px",
-                      border: "1px solid var(--border)", borderRadius: 4,
-                      background: "none", color: "var(--text3)", cursor: "pointer",
-                      fontFamily: "var(--font-ibm-plex-sans), sans-serif", whiteSpace: "nowrap",
-                    }}
-                  >
-                    {a.isActive ? "Disable" : "Enable"}
+                  <button onClick={openNewAgent} style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    background: "var(--text)", color: "var(--bg)",
+                    border: "none", borderRadius: 6, padding: "5px 12px",
+                    fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                  }}>
+                    <SvgIcon d="M12 5v14M5 12l7-7 7 7" size={11} />
+                    New agent
                   </button>
                 </div>
-              ))}
+                <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                  {agents.perUser.length === 0 && !showNewAgent ? (
+                    <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text3)", fontSize: 12 }}>
+                      No user-specific agents — create one above
+                    </div>
+                  ) : agents.perUser.map((a, i) => {
+                    const isSel = selectedAgentId === a.id
+                    return (
+                      <div key={a.id} onClick={() => openAgentEditor(a)} style={{
+                        padding: "10px 14px", cursor: "pointer",
+                        borderBottom: i < agents.perUser.length - 1 ? "1px solid var(--border)" : "none",
+                        background: isSel ? "rgba(139,115,85,.1)" : "none",
+                        transition: "background .1s",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                          <span style={{ fontSize: 12, fontWeight: isSel ? 600 : 500, color: "var(--text)", flex: 1 }}>{a.name}</span>
+                          <span style={tagStyle(a.isActive ? "var(--green)" : "var(--text3)")}>{a.isActive ? "on" : "off"}</span>
+                          <span style={tagStyle("var(--text3)")}>{a.model.includes("haiku") ? "haiku" : "sonnet"}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: "var(--text3)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {a.description}
+                        </div>
+                        <div style={{ display: "flex", gap: 3, flexWrap: "wrap", marginTop: 4 }}>
+                          {a.tools.slice(0, 4).map(t => <span key={t} style={tagStyle("var(--blue)")}>{t}</span>)}
+                          {a.tools.length > 4 && <span style={tagStyle("var(--text3)")}>+{a.tools.length - 4}</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
+
+            {/* Right: Editor */}
+            {isEditing && (
+              <form onSubmit={handleSaveAgent} style={{
+                flex: 1, display: "flex", flexDirection: "column", gap: 14,
+                background: "var(--surface)", border: "1.5px solid var(--border)",
+                borderRadius: 10, padding: 20, minWidth: 0,
+              }}>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 10, fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text3)" }}>
+                    {showNewAgent ? "new agent" : "edit agent"}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", flex: 1 }}>
+                    {showNewAgent ? "Create user agent" : agentForm.name}
+                  </span>
+                  <button type="button" onClick={() => { setSelectedAgentId(null); setShowNewAgent(false) }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", display: "flex", padding: 2 }}>
+                    <SvgIcon d="M18 6L6 18M6 6l12 12" size={14} />
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={agentLabelStyle}>Name</label>
+                    <input style={agentInputStyle} required placeholder="e.g. TRR Monitoring Analyst"
+                      value={agentForm.name} onChange={e => setAgentForm(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div style={{ width: 140 }}>
+                    <label style={agentLabelStyle}>Model</label>
+                    <select style={{ ...agentInputStyle, cursor: "pointer" }}
+                      value={agentForm.model} onChange={e => setAgentForm(p => ({ ...p, model: e.target.value }))}>
+                      <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
+                      <option value="claude-sonnet-4-6">Sonnet (smart)</option>
+                    </select>
+                  </div>
+                  <div style={{ width: 80 }}>
+                    <label style={agentLabelStyle}>Max turns</label>
+                    <input style={agentInputStyle} type="number" min={1} max={20}
+                      value={agentForm.maxTurns} onChange={e => setAgentForm(p => ({ ...p, maxTurns: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={agentLabelStyle}>Description</label>
+                  <input style={agentInputStyle} required placeholder="Short description of what this agent does"
+                    value={agentForm.description} onChange={e => setAgentForm(p => ({ ...p, description: e.target.value }))} />
+                </div>
+
+                <div>
+                  <label style={agentLabelStyle}>Tools (comma-separated)</label>
+                  <input style={agentInputStyle} placeholder="query_user_file, list_user_files, render_artifact"
+                    value={agentForm.tools} onChange={e => setAgentForm(p => ({ ...p, tools: e.target.value }))} />
+                </div>
+
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <label style={agentLabelStyle}>System prompt</label>
+                  <textarea style={{ ...agentInputStyle, flex: 1, minHeight: 220, resize: "vertical", lineHeight: 1.6 }} required
+                    placeholder="You are a specialist agent for..."
+                    value={agentForm.systemPrompt} onChange={e => setAgentForm(p => ({ ...p, systemPrompt: e.target.value }))} />
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button type="submit" disabled={savingAgent} style={{
+                    background: agentSaved ? "var(--green)" : "var(--text)", color: "var(--bg)",
+                    border: "none", borderRadius: 6, padding: "7px 18px",
+                    fontSize: 11, fontWeight: 600, cursor: savingAgent ? "not-allowed" : "pointer",
+                    opacity: savingAgent ? 0.7 : 1, fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                    transition: "background .2s",
+                  }}>
+                    {savingAgent ? "Saving..." : agentSaved ? "Saved ✓" : showNewAgent ? "Create agent" : "Save changes"}
+                  </button>
+
+                  {/* Toggle active (edit only) */}
+                  {!showNewAgent && selectedAgentId && (() => {
+                    const a = agents.perUser.find(x => x.id === selectedAgentId)
+                    return a ? (
+                      <button type="button" onClick={async () => {
+                        await fetch(`/api/admin/users/${userId}/agents`, { method: "PATCH", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ agentId: a.id, isActive: !a.isActive }) })
+                        await load()
+                      }} style={{
+                        border: "1.5px solid var(--border)", borderRadius: 6, padding: "6px 12px",
+                        background: "none", fontSize: 11, color: "var(--text3)",
+                        cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+                      }}>
+                        {a.isActive ? "Disable" : "Enable"}
+                      </button>
+                    ) : null
+                  })()}
+
+                  {/* Delete (edit only) */}
+                  {!showNewAgent && (
+                    confirmDeleteAgent ? (
+                      <>
+                        <span style={{ fontSize: 11, color: "var(--red)", fontFamily: "var(--font-ibm-plex-sans), sans-serif" }}>Delete agent?</span>
+                        <button type="button" onClick={handleDeleteAgent}
+                          style={{ border: "1.5px solid var(--red)", borderRadius: 6, padding: "5px 12px", background: "none", fontSize: 11, color: "var(--red)", cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif" }}>
+                          Confirm
+                        </button>
+                        <button type="button" onClick={() => setConfirmDeleteAgent(false)}
+                          style={{ border: "1.5px solid var(--border)", borderRadius: 6, padding: "5px 12px", background: "none", fontSize: 11, color: "var(--text3)", cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif" }}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setConfirmDeleteAgent(true)}
+                        style={{ marginLeft: "auto", border: "1.5px solid var(--border)", borderRadius: 6, padding: "5px 12px", background: "none", fontSize: 11, color: "var(--text3)", cursor: "pointer", fontFamily: "var(--font-ibm-plex-sans), sans-serif" }}>
+                        Delete
+                      </button>
+                    )
+                  )}
+                </div>
+              </form>
+            )}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* RESOURCES TAB */}
       {tab === "resources" && (
