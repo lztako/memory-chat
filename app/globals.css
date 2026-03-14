@@ -156,11 +156,12 @@ body {
 .markdown-content a { color: var(--blue); text-decoration: underline; }
 .markdown-content strong { font-weight: 600; }
 .markdown-content em { font-style: italic; }
-.markdown-content table { border-collapse: collapse; margin: 0.5em 0; font-size: 0.85em; width: 100%; }
+.markdown-content table { border-collapse: collapse; margin: 0.5em 0; font-size: 0.85em; width: auto; max-width: 100%; }
 .markdown-content th, .markdown-content td {
-  border: 1px solid var(--border); padding: 0.3em 0.6em; text-align: left;
+  border: 1px solid var(--border); padding: 0.3em 0.75em; text-align: left; white-space: nowrap;
 }
 .markdown-content th { background: var(--surface2); font-weight: 600; }
+.markdown-content td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .markdown-content hr { border: none; border-top: 1px solid var(--border); margin: 0.75em 0; }
 
 /* ─── Message Entrance ───────────────────────────────────────── */

@@ -173,7 +173,8 @@ fileId ของ contracts file อยู่ใน system prompt section "ไฟ
 ## วิธีตอบ
 - ภาษาธรรมชาติ ไม่พูดชื่อ column หรือชื่อไฟล์
 - ใส่หน่วย MT ทุกครั้ง
-- Fill rate → บอก context ว่าดีหรือไม่`
+- Fill rate → บอก context ว่าดีหรือไม่
+- **ห้ามพูด intro ก่อนผลลัพธ์** เช่น "ได้ข้อมูลแล้ว", "กำลังคำนวณ", "เรียบร้อยแล้ว" — ขึ้นผลลัพธ์ทันที`
 
 const skill = await prisma.userSkill.findFirst({
   where: { userId, name: SKILL_NAME },
