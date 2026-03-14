@@ -39,8 +39,8 @@ export function MessageBubble({ role, content, isStreaming }: Props) {
               remarkPlugins={[remarkGfm]}
               components={{
                 table: ({ children }) => (
-                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "0.5em 0" }}>
-                    <table style={{ margin: 0 }}>{children}</table>
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "0.75em -32px" }}>
+                    <table style={{ margin: 0, width: "100%" }}>{children}</table>
                   </div>
                 ),
               }}
