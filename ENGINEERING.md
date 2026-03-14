@@ -228,11 +228,11 @@ Build order (เรียงตาม dependency):
 - [x] Agent Layer — UserAgent table · use_agent tool (isolated Haiku loop) · seed 3 global agents · Admin UI Agents tab · UserGraphView 5th spoke (purple) · ADR-006
 - [x] Feature 4 — Admin Structure Tab (2026-03-14) — tree view Skills→Docs (lazy load) + side panel editor · skill CRUD routes + UserDoc PATCH + parentType/parentId filter · StructureTree.tsx · link-trr-docs-to-skill script · TRR monitoring docs linked under skill
 
-**Feature 5 — SQL JSONB Query Engine** ⏳ in progress (2026-03-14)
-- [ ] Replace JS in-memory query ใน `query_user_file` handler ด้วย PostgreSQL `jsonb_to_recordset` + `$queryRawUnsafe`
-- [ ] ได้: filter OR/AND/NULL, GROUP BY multi-col, HAVING, window functions, JOIN cross-file
-- [ ] Tech Debt Level 3 (FileRow migration) ยกเลิก — `jsonb_to_recordset` ให้ SQL power เท่ากันโดยไม่ต้องเปลี่ยน schema
-- Appetite: M | No-go: window functions (ทำใน Phase 2), cross-file JOIN (Phase 2)
+**Feature 5 — SQL JSONB Query Engine** ✅ Done (2026-03-14)
+- [x] Replace JS in-memory query ใน `query_user_file` handler ด้วย PostgreSQL `jsonb_to_recordset` + `$queryRawUnsafe`
+- [x] Phase 1: filter OR/AND/NULL, GROUP BY multi-col, HAVING on aggregates
+- [x] Phase 2: window functions (RANK/DENSE_RANK/ROW_NUMBER/SUM/AVG/LAG/LEAD), cross-file JOIN (CTE-based INNER/LEFT)
+- [x] Tech Debt Level 3 (FileRow migration) ยกเลิก — `jsonb_to_recordset` ให้ SQL power เท่ากันโดยไม่ต้องเปลี่ยน schema
 
 ### NEXT
 - **Agent Teams + Custom Sub-agents** — design พร้อมแล้ว (2026-03-12)

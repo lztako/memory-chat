@@ -66,6 +66,7 @@ export async function POST(req: Request) {
   const systemPrompt = buildSystemPrompt({
     longTerm, dailyLog, reminderTasks, userConfig, skills, message,
     attachedFiles, skillsPreFiltered: true, userFiles, activeTasks, globalInfo, resources, globalDocs,
+    hasFolderContext: !!folderContext,
   })
 
   // Build enriched user message — append folder context if available
@@ -154,13 +155,28 @@ export async function POST(req: Request) {
             controller.enqueue(sse("text", "\n\n[หยุดการทำงานอัตโนมัติ — เกิน 10 รอบ กรุณาสั่งใหม่อีกครั้ง]"))
             break
           }
+          // Force tool call on first iteration when user has files — prevents Sonnet
+          // from generating text (e.g. "Let me calculate...") before querying data
+          const toolChoice: Anthropic.Messages.ToolChoiceAuto | Anthropic.Messages.ToolChoiceAny =
+            toolIterations === 0 && userFiles.length > 0
+              ? { type: "any" }
+              : { type: "auto" }
+
+          // Cache system prompt + tool definitions to reduce input token processing
+          // on repeated requests. Cache TTL = 5 min (Anthropic ephemeral cache).
+          const cachedTools = activeTools.map((t, i) =>
+            i === activeTools.length - 1
+              ? { ...t, cache_control: { type: "ephemeral" as const } }
+              : t
+          )
+
           const stream = anthropic.messages.stream({
             model: "claude-sonnet-4-6",
             max_tokens: 2048,
-            system: systemPrompt,
+            system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
             messages: apiMessages,
-            tools: activeTools,
-            tool_choice: { type: "auto" },
+            tools: cachedTools,
+            tool_choice: toolChoice,
           })
 
           const toolUseBlocks: Array<{

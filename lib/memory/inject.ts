@@ -156,8 +156,14 @@ type GlobalDocIndex = {
   category: string
 }
 
-function buildGlobalDocsSection(docs: GlobalDocIndex[]): string {
+// Keywords that suggest user is asking about Origo company knowledge
+const ORIGO_KEYWORDS = ["origo", "บริษัท", "สินค้า", "brand", "แบรนด์", "นโยบาย", "policy", "ติดต่อ", "contact", "about", "เกี่ยวกับ", "profile", "โปรไฟล์"]
+
+function buildGlobalDocsSection(docs: GlobalDocIndex[], message: string): string {
   if (docs.length === 0) return ""
+  const msgLower = message.toLowerCase()
+  const isRelevant = ORIGO_KEYWORDS.some((kw) => msgLower.includes(kw))
+  if (!isRelevant) return ""
   const byCategory = docs.reduce<Record<string, GlobalDocIndex[]>>((acc, d) => {
     ;(acc[d.category] ??= []).push(d)
     return acc
@@ -224,6 +230,7 @@ export type BuildSystemPromptOptions = {
   globalInfo?: GlobalInfoItem[]
   resources?: ResourceDocIndex[]
   globalDocs?: GlobalDocIndex[]
+  hasFolderContext?: boolean
 }
 
 export function buildSystemPrompt({
@@ -240,6 +247,7 @@ export function buildSystemPrompt({
   globalInfo = [],
   resources = [],
   globalDocs = [],
+  hasFolderContext = false,
 }: BuildSystemPromptOptions): string {
   const longTermText =
     longTerm.length > 0
@@ -270,7 +278,7 @@ export function buildSystemPrompt({
   const userFilesSection = buildUserFilesSection(userFiles)
   const activeTasksSection = buildActiveTasksSection(activeTasks)
   const resourcesSection = buildResourcesSection(resources)
-  const globalDocsSection = buildGlobalDocsSection(globalDocs)
+  const globalDocsSection = buildGlobalDocsSection(globalDocs, message)
 
   return `You are Origo AI — AI ผู้ช่วยด้านการนำเข้า-ส่งออกจาก Origo
 วันนี้คือ ${today}${globalInfoSection}${globalDocsSection}
@@ -285,6 +293,7 @@ ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSect
 - ถ้าไม่แน่ใจ ให้ถามแทนการเดา
 - **ห้ามใช้ emoji ใดๆ ทั้งสิ้น** — ใช้ข้อความล้วน ไม่มีข้อยกเว้น
 - **ห้าม narrate กระบวนการทำงาน** — ไม่พูดว่า "กำลังดึงข้อมูล", "กำลังวิเคราะห์", "ขอ query", "ดึงข้อมูลจากไฟล์" ฯลฯ — ทำ tool call แล้วตอบผลลัพธ์โดยตรงเลย
+- **ถ้า user ถามข้อมูลที่ต้องดึงจากไฟล์ — query_user_file ต้องเป็น action แรกเสมอ** — ห้ามตอบตัวเลข ยอด เปอร์เซ็นต์ หรือข้อมูลใดๆ ก่อนมี tool call ไม่มีข้อยกเว้น
 - **ห้ามพูดถึงชื่อไฟล์** เช่น "contracts.csv", "finance.csv" — อ้างถึงด้วยภาษาธรรมชาติเช่น "ข้อมูลสัญญา", "ข้อมูลการส่งสินค้า", "ข้อมูลการเงิน", "ข้อมูล invoices" แทน
 
 ## การใช้ Tools:
@@ -300,9 +309,10 @@ ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSect
 - ถ้ามี local folder เปิดอยู่ด้วย → ให้ call list_folder_tree เพื่อดูไฟล์ใน folder
 - อย่าสรุปว่า "หาไม่เจอ" โดยดูแค่ที่เดียว
 
+${hasFolderContext ? `
 ## Local Folder (เมื่อ user เปิด folder ไว้):
 - ใช้ list_folder_tree เพื่อดูโครงสร้างไฟล์ถ้ายังไม่รู้ว่ามีไฟล์อะไร
 - ใช้ read_local_file เพื่ออ่านไฟล์ — ถ้า tool ตอบว่าไฟล์ไม่อยู่ใน context ให้บอก user ตรงๆ สั้นๆ เช่น "กรุณาพูดถึงชื่อไฟล์ในข้อความ เช่น 'ดูไฟล์ journal.txt ให้หน่อย'" — ห้ามแต่งภาษาแปลกหรือสร้าง UI เอง
 - ใช้ write_local_file เพื่อสร้างหรือแก้ไขไฟล์ — เนื้อหาจะถูกเขียนลงเครื่อง user จริง
-- ใช้ move_local_file เพื่อเปลี่ยนชื่อหรือย้ายไฟล์`
+- ใช้ move_local_file เพื่อเปลี่ยนชื่อหรือย้ายไฟล์` : ""}`
 }
