@@ -82,20 +82,20 @@ body {
 /* ─── World Map Markers ──────────────────────────────────────── */
 .origo-marker { cursor: pointer; }
 .origo-marker-hit { fill: transparent; pointer-events: all; }
-.origo-marker-glow { fill: rgba(255,171,46,.12); stroke: var(--accent); stroke-width: 1; }
+.origo-marker-glow { fill: rgba(255,171,46,.15); stroke: #ffab2e; stroke-width: 1.2; }
 .origo-marker-pill {
-  fill: var(--surface); stroke: rgba(140,151,170,.5); stroke-width: 1;
+  fill: #ffab2e; stroke: rgba(255,171,46,.6); stroke-width: 1.5;
   transition: transform .12s, filter .12s;
   transform-box: fill-box; transform-origin: center;
 }
 .origo-marker-text {
-  fill: var(--text); font-size: 12px; font-weight: 600;
+  fill: #0d1117; font-size: 12px; font-weight: 700;
   text-anchor: middle; dominant-baseline: central;
   pointer-events: none; font-family: var(--font-sans), sans-serif;
 }
-.origo-marker.is-active .origo-marker-pill { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-dim); }
-.origo-marker.is-active .origo-marker-text { fill: var(--accent); }
-.origo-marker:hover .origo-marker-pill { filter: brightness(1.15); transform: scale(1.1); }
+.origo-marker.is-active .origo-marker-pill { stroke: #fff; stroke-width: 2.5; fill: #ffab2e; filter: brightness(1.1); }
+.origo-marker.is-active .origo-marker-text { fill: #0d1117; }
+.origo-marker:hover .origo-marker-pill { filter: brightness(1.12); transform: scale(1.1); }
 
 /* ─── Accent highlights ──────────────────────────────────────── */
 .accent-active {

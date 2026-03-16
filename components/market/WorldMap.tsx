@@ -30,8 +30,8 @@ type GeoFeature = {
 // ─── Projection (Mercator) ────────────────────────────────────
 const VIEWBOX = { width: 1000, height: 420 }
 const MIN_ZOOM = 1
-const MAX_ZOOM = 6
-const ZOOM_STEP = 0.35
+const MAX_ZOOM = 5
+const ZOOM_STEP = 0.3
 const LAT_MAX = 80
 const LAT_MIN = -55
 
@@ -188,9 +188,14 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
       e.preventDefault()
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
       const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current + delta))
+      if (nextZoom === zoomRef.current) return
       zoomRef.current = nextZoom
+      // When zooming out to min, also reset pan to avoid map going offscreen
+      if (nextZoom === MIN_ZOOM) {
+        panRef.current = { x: 0, y: 0 }
+        setPan({ x: 0, y: 0 })
+      }
       setZoom(nextZoom)
-      panRef.current = pan
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
@@ -318,7 +323,7 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
       <div style={{ position: "absolute", right: 10, top: 10, zIndex: 20, display: "flex", flexDirection: "column", gap: 6 }}>
         {([
           { label: "+", action: () => { const z = Math.min(MAX_ZOOM, zoomRef.current + ZOOM_STEP); zoomRef.current = z; setZoom(z) } },
-          { label: "−", action: () => { const z = Math.max(MIN_ZOOM, zoomRef.current - ZOOM_STEP); zoomRef.current = z; setZoom(z) } },
+          { label: "−", action: () => { const z = Math.max(MIN_ZOOM, zoomRef.current - ZOOM_STEP); zoomRef.current = z; if (z === MIN_ZOOM) { panRef.current = { x: 0, y: 0 }; setPan({ x: 0, y: 0 }) } setZoom(z) } },
         ] as const).map(({ label, action }) => (
           <button
             key={label}
@@ -375,8 +380,8 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
               <path
                 key={f.key}
                 d={f.path}
-                fill={isSelected ? "rgba(255,171,46,.18)" : hasData ? "#2a3a55" : "var(--surface2)"}
-                stroke="var(--border)"
+                fill={isSelected ? "rgba(255,171,46,.35)" : hasData ? "rgba(255,171,46,.18)" : "var(--surface2)"}
+                stroke={hasData ? "rgba(255,171,46,.3)" : "var(--border)"}
                 strokeWidth="0.5"
                 style={{ cursor: f.code ? "pointer" : "default", transition: "fill .15s" }}
                 onClick={() => handleCountryClick(f.code)}
