@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk"
 
 // ─── Main tools (sent to Claude API) ─────────────────────────────────────────
-export const toolDefinitions: Anthropic.Tool[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const toolDefinitions: any[] = [
   {
     name: "save_memory",
     description:
@@ -172,7 +173,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "query_user_file",
     description:
-      "ดึงและวิเคราะห์ข้อมูลจากไฟล์ที่ user อัปโหลดไว้ — ใช้ filter/aggregate/groupBy เพื่อดึงเฉพาะข้อมูลที่ต้องการ ห้ามดึงข้อมูลทั้งหมดโดยไม่มี filter หรือ aggregate เพื่อประหยัด context ถ้าต้องการ summary ให้ใช้ groupBy+aggregate แทนการดึง raw rows",
+      "ดึง rows เฉพาะจากไฟล์ที่ user อัปโหลดไว้ — ใช้สำหรับ lookup (แสดง rows ตามเงื่อนไข) เช่น 'แสดงสัญญาของ COFCO ทั้งหมด' หรือ 'รายการที่ status = overdue' ถ้าต้องการ aggregate (SUM, COUNT, GROUP BY, ยอดรวม, จำนวน, ค่าเฉลี่ย) ให้ใช้ execute_sql แทน — เร็วกว่าและแม่นยำกว่า",
     input_schema: {
       type: "object",
       properties: {
@@ -404,11 +405,32 @@ export const toolDefinitions: Anthropic.Tool[] = [
     },
   },
   {
+    name: "execute_sql",
+    description:
+      "รัน SQL query ตรงกับ PostgreSQL เพื่อ aggregate ข้อมูลของ user — ใช้สำหรับ SUM, COUNT, GROUP BY, AVG, HAVING หรือคำถามที่ต้องคำนวณข้ามหลาย rows ดีกว่า query_user_file สำหรับ aggregate เพราะ DB คำนวณให้โดยตรง ผลลัพธ์แม่นยำ 100% ไม่ต้อง pull rows มา context — Schema: UserFile(id, userId, fileType, fileName, data JSONB) — Pattern: SELECT elem->>'col', SUM((elem->>'num')::numeric) FROM \"UserFile\", jsonb_array_elements(data) AS elem WHERE \"userId\" = $1 AND \"fileType\" = 'type' GROUP BY ...",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            'SELECT query เท่านั้น ต้องมี WHERE "userId" = $1 เสมอ ใช้ jsonb_array_elements(data) AS elem เพื่อ access rows ใน JSONB เช่น SELECT elem->>\'customer\' AS customer, SUM((elem->>\'bal\')::numeric) AS total FROM "UserFile", jsonb_array_elements(data) AS elem WHERE "userId" = $1 AND "fileType" = \'shipment\' AND (elem->>\'bal\')::numeric > 0 GROUP BY elem->>\'customer\'',
+        },
+        fileType: {
+          type: "string",
+          description: "fileType ที่ query เช่น 'shipment', 'invoice', 'contracts' — ใช้สำหรับ logging",
+        },
+      },
+      required: ["query", "fileType"],
+    },
+  },
+  {
     name: "use_agent",
     description:
-      "เรียก specialist sub-agent เพื่อทำงานเฉพาะด้าน — ใช้เมื่อ task ต้องการ data หรือ expertise ที่ agent นั้นเชี่ยวชาญ\n" +
-      "Agents ที่มี: 'Trade Data Analyst' (ข้อมูลตลาด Tendata), 'File Processor' (วิเคราะห์ไฟล์ CSV ของ user), 'Task Manager' (สร้าง/จัดการ tasks)\n" +
-      "ไม่เรียกเมื่อ: ตอบได้โดยไม่ต้องดึงข้อมูลใหม่, คำถาม conceptual, synthesis จากข้อมูลที่มีอยู่แล้ว",
+      "เรียก specialist sub-agent เพื่อทำงานเฉพาะด้านที่ซับซ้อน หลายขั้นตอน หรือต้องการ expertise เฉพาะ\n" +
+      "Agents ที่มี: 'Trade Data Analyst' (ข้อมูลตลาด Tendata), 'File Processor' (วิเคราะห์ไฟล์ CSV ซับซ้อน), 'Task Manager' (สร้าง/จัดการ tasks)\n" +
+      "ห้ามเรียกเมื่อ: คำถาม COUNT/SUM/aggregate ง่ายๆ → ใช้ execute_sql โดยตรง | lookup rows → ใช้ query_user_file โดยตรง | ตอบได้โดยไม่ต้องดึงข้อมูลใหม่ | คำถาม conceptual\n" +
+      "เรียกเมื่อ: workflow หลายขั้นตอน, ต้องการ reasoning ซับซ้อน, หรือ task ที่ต้องใช้หลาย tool ต่อเนื่องกัน",
     input_schema: {
       type: "object",
       properties: {

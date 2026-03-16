@@ -1,0 +1,20 @@
+● Error ที่เหลือเป็นของ layout.tsx ที่มีอยู่ก่อนแล้ว — ไม่ใช่จาก code ที่เราเพิ่ม ผ่านครับ
+
+  สรุปทั้งหมดที่ implement วันนี้:
+
+  ✅ prisma/schema.prisma    — UserAgent model + sync DB + generate
+  ✅ lib/repositories/
+     agent.repo.ts           — getForUser, getByName, listGlobal, CRUD
+  ✅ lib/tools/definitions.ts — use_agent tool เพิ่มใน toolDefinitions
+  ✅ lib/tools/handlers.ts   — use_agent case: isolated sub-call loop
+  ✅ scripts/seed-agents.ts  — global agents 3 ตัว seed เข้า DB แล้ว
+
+  ---
+  สิ่งที่ต้องทำต่อ (แจ้งให้รู้ไว้):
+
+  1. Admin UI — Agents tab ใน /admin/[id] + /admin/agents page (global agents management)
+  2. UserGraphView — เพิ่ม Agents เป็น spoke ที่ 5
+  3. Routing section ใน system prompt (lib/memory/inject.ts) — บอก main Claude ว่าเรียก agent เมื่อไหร่
+  4. API routes — GET/POST/DELETE /api/admin/users/[id]/agents และ /api/admin/agents
+
+  อยากทำส่วนไหนต่อก่อนครับ?

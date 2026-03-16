@@ -234,6 +234,19 @@ Build order (เรียงตาม dependency):
 - [x] Phase 2: window functions (RANK/DENSE_RANK/ROW_NUMBER/SUM/AVG/LAG/LEAD), cross-file JOIN (CTE-based INNER/LEFT)
 - [x] Tech Debt Level 3 (FileRow migration) ยกเลิก — `jsonb_to_recordset` ให้ SQL power เท่ากันโดยไม่ต้องเปลี่ยน schema
 
+**Feature 6 — execute_sql Tool** ✅ Done (2026-03-15)
+- [x] `lib/db/sql-executor.ts` — validation layer (SELECT only, $1 required, forbidden patterns) + execute + row limit 500 + timeout 8s
+- [x] Tool definition + handler (`execute_sql` case ใน handlers.ts)
+- [x] System prompt: SQL hint ใน user files section + rule ให้ AI เลือก execute_sql สำหรับ aggregate
+- [x] `query_user_file` description update — ชัดว่าใช้ lookup เท่านั้น
+- [x] File Processor agent — เพิ่ม `execute_sql` ใน tools array (DB update)
+- [x] ADR-008 — decision record สำหรับ execute_sql approach
+
+**Feature 7 — Web Search + Web Fetch Tools** ✅ Done (2026-03-15)
+- [x] `web_search_20250305` + `web_fetch_20250910` เพิ่มใน `activeTools` array ใน `chat/route.ts`
+- [x] Streaming: `server_tool_use` content block detection → emit `tool_start`/`tool_done` SSE badges
+- [x] max_uses: 3 per request, max_content_tokens: 50,000 สำหรับ web fetch
+
 ### NEXT
 - **Agent Teams + Custom Sub-agents** — design พร้อมแล้ว (2026-03-12)
   - Full design: `~/.claude/projects/.../memory/project_agent_architecture.md`
@@ -249,6 +262,21 @@ Build order (เรียงตาม dependency):
 - ดูเพิ่มเติมใน `IDEAS.md` และ `CLAUDE.md` → Roadmap section
 - **Tendata + Memory as MCP server** — expose เป็น MCP server เพื่อให้ Claude Code CLI / future products ใช้ได้ (ตอนนี้ไม่จำเป็น เพราะ app เราควบคุม Tendata เองอยู่แล้ว)
 - **`.mcp.json` project scope** — commit MCP server configs (supabase, github, context7) ลง repo เพื่อให้ทุกคนใน team ได้ toolset เดียวกัน (S appetite, no-brainer เมื่อมี team)
+- **PreToolUse / PostToolUse Hooks** — intercept tool calls ก่อน/หลัง execute: Tendata rate limit check รวมศูนย์ (ไม่ต้องเขียน boilerplate ซ้ำทุก handler) + audit log ฟรี (จาก Agent SDK docs 2026-03-14)
+- **execute_sql as MCP tool** — สร้างเป็น MCP server แยกด้วย `createSdkMcpServer` pattern แทนการเพิ่มใน definitions.ts ตรงๆ (ref: ADR-008, Agent SDK docs 2026-03-14)
+- **Subagent parallelization** — upgrade `use_agent` tool ให้รัน subagents พร้อมกันได้ เช่น query contracts + shipments parallel แทนที่จะ sequential (จาก Agent SDK docs 2026-03-14)
+- **Web Search usage tracking** — web_search ราคา $10/1,000 searches ต้อง track per-user เมื่อ scale ขึ้น (ตอนนี้ max_uses:3 ต่อ request คุมได้ระดับหนึ่ง)
+- **Adaptive Thinking** (2026-03-14) — เราใช้ Sonnet 4.6 อยู่แล้ว → เพิ่มแค่ `thinking: { type: "adaptive" }` ใน `chat/route.ts`
+  - Use case: คำถามซับซ้อน เช่น "วิเคราะห์ตลาด", "เปรียบเทียบ", "กลยุทธ์" → Claude คิดลึกขึ้น auto
+  - Options: per-user AI config (`enable_thinking: true`) หรือ auto-detect จาก keyword ในคำถาม
+  - Tool use: ต้อง preserve `thinking` blocks กลับไปทุกครั้งใน conversation history (ตอนนี้ route.ts ยังไม่ทำ)
+  - Cost: จ่ายตาม thinking tokens จริง ไม่ใช่ tokens ที่แสดง + ควบคุมด้วย `output_config: { effort: "low/medium/high" }`
+  - Interleaved thinking auto-enabled กับ adaptive → Claude คิดระหว่าง Tendata tool calls ได้
+- **Structured Outputs** (2026-03-14) — ใช้ได้กับทุก model ที่เราใช้ (Haiku 4.5, Sonnet 4.6, Opus 4.6)
+  - `extract.ts` → เปลี่ยนจาก `JSON.parse()` เป็น `client.messages.parse()` + Zod schema → 0% parse error รับประกัน
+  - Tendata tool definitions → เพิ่ม `strict: true` → Claude call tool ด้วย params ที่ถูก schema เสมอ ไม่มี missing fields
+  - `render_artifact` tool → เพิ่ม `strict: true` → chart/table structure ถูกต้องเสมอ
+  - Cost: overhead ~5-10% แต่ประหยัด retry ~15-25% → net ประหยัดโดยรวม
 
 **Tech Debt (จาก Global Info review — 2026-03-12)** ✅ Done 2026-03-12
 - [x] `checkAuth` → extract `lib/admin/auth.ts` (12 admin routes)
@@ -296,6 +324,7 @@ Level 3 — Architecture (L appetite, รอ user feedback จริงก่อ
 | [005](docs/adr/ADR-005-pgvector-semantic-memory.md) | pgvector semantic memory search | Accepted | 2026-03-10 |
 | [006](docs/adr/ADR-006-agent-layer.md) | Agent Layer — per-user sub-agents (Claude Code in web) | Accepted | 2026-03-11 |
 | [007](docs/adr/ADR-007-userdoc-single-table.md) | UserDoc single table สำหรับ skill/agent sub-docs + resources | Accepted | 2026-03-12 |
+| [008](docs/adr/ADR-008-execute-sql-tool.md) | execute_sql tool — SQL execution against user JSONB data | Accepted | 2026-03-14 |
 
 ---
 

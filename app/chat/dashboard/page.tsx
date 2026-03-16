@@ -25,6 +25,7 @@ type WidgetConfig = {
     xFormat?: "month"
     yAxis?: string
     columns?: string[]
+    filterColumn?: string
     orderBy?: string
     orderDir?: "asc" | "desc"
     limit?: number
@@ -147,6 +148,9 @@ async function computeWidget(
 
   if (widget.type === "table") {
     let rows = [...data]
+    if (config.filterColumn && config.filterValue) {
+      rows = rows.filter(r => r[config.filterColumn!] === config.filterValue)
+    }
     if (config.orderBy) {
       const dir = config.orderDir ?? "desc"
       rows = rows.sort((a, b) => {

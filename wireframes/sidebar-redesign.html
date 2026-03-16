@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Origo — UI Redesign Wireframe v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #f0ede8;
+    --surface:  #e8e4de;
+    --surface2: #ddd9d2;
+    --border:   #b8b2a8;
+    --border2:  #9a9490;
+    --text:     #2a2825;
+    --text2:    #6b6560;
+    --text3:    #9a9490;
+    --accent:   #2a2825;
+    --red:      #c0392b;
+    --blue:     #2c5f8a;
+    --green:    #2d6a4f;
+    --font:     'IBM Plex Sans', sans-serif;
+    --mono:     'IBM Plex Mono', monospace;
+  }
+
+  body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Title bar */
+  .titlebar { height: 36px; background: var(--surface2); border-bottom: 1.5px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 8px; flex-shrink: 0; }
+  .titlebar-dots { display: flex; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--border); border: 1px solid var(--border2); }
+  .titlebar-title { margin: 0 auto; font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .06em; }
+
+  /* App grid */
+  .app { display: grid; grid-template-columns: 220px 1fr 280px; flex: 1; overflow: hidden; }
+
+  /* ── SIDEBAR ──────────────────────────────────── */
+  .sidebar { background: var(--surface); border-right: 1.5px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+
+  .brand { padding: 13px 14px 11px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+  .brand-logo { width: 28px; height: 28px; border: 1.5px solid var(--border2); border-radius: 7px; background: var(--surface2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text2); }
+  .brand-name { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: .01em; }
+  .brand-sub { font-size: 9px; color: var(--text3); font-family: var(--mono); margin-top: 1px; }
+
+  .new-chat-btn { display: flex; align-items: center; gap: 8px; margin: 10px 10px 4px; padding: 7px 12px; border: 1.5px solid var(--border2); border-radius: 7px; font-family: var(--font); font-size: 12px; font-weight: 500; color: var(--text); background: var(--bg); cursor: pointer; transition: background .12s, border-color .12s; flex-shrink: 0; }
+  .new-chat-btn:hover { background: var(--surface2); border-color: var(--accent); }
+
+  .section-label { padding: 8px 14px 3px; font-size: 9px; font-family: var(--mono); letter-spacing: .1em; color: var(--text3); text-transform: uppercase; flex-shrink: 0; }
+
+  .conv-list { flex: 1; overflow-y: auto; padding: 2px 8px 6px; }
+  .conv-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 12px; color: var(--text2); cursor: pointer; margin-bottom: 1px; transition: background .1s, color .1s; }
+  .conv-item:hover { background: var(--surface2); color: var(--text); }
+  .conv-item.active { background: var(--accent); color: #f0ede8; }
+  .conv-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conv-del { opacity: 0; padding: 2px 4px; font-size: 12px; cursor: pointer; border-radius: 3px; background: none; border: none; color: inherit; transition: opacity .15s; flex-shrink: 0; }
+  .conv-item:hover .conv-del { opacity: .45; }
+  .conv-item:hover .conv-del:hover { opacity: 1; color: var(--red); }
+  .conv-item.active .conv-del { color: rgba(240,237,232,.5); }
+  .conv-item.active .conv-del:hover { color: #f0a09a; opacity: 1; }
+
+  .divider { height: 1px; background: var(--border); margin: 4px 14px; flex-shrink: 0; }
+
+  .nav-section { padding: 3px 8px 6px; flex-shrink: 0; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--text2); cursor: pointer; margin-bottom: 1px; transition: background .1s, color .1s; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #f0ede8; }
+
+  .sidebar-footer { padding: 8px 10px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .user-row { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: background .1s; }
+  .user-row:hover { background: var(--surface2); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--text); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 12px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-plan { font-size: 9px; color: var(--text3); font-family: var(--mono); }
+  .gear-btn { width: 26px; height: 26px; border-radius: 5px; border: 1px solid var(--border); background: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text3); flex-shrink: 0; transition: color .1s, border-color .1s, background .1s; }
+  .gear-btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+
+  /* ── MAIN AREA ─────────────────────────────────── */
+  .main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+  .topbar { height: 44px; border-bottom: 1.5px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 8px; flex-shrink: 0; background: var(--bg); }
+  .topbar-title { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+  .topbar-btn { padding: 4px 10px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 11px; font-family: var(--mono); background: var(--surface); color: var(--text2); cursor: pointer; transition: border-color .12s, color .12s; white-space: nowrap; }
+  .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .topbar-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .topbar-btn.primary:hover { opacity: .85; }
+
+  /* ── NEW CHAT EMPTY STATE ─────────────────────── */
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 40px; background: var(--bg); }
+  .greeting { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 28px; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+  .greeting-icon { color: #c0392b; }
+  .empty-input-wrap { width: 100%; max-width: 640px; border: 1.5px solid var(--border2); border-radius: 12px; background: var(--surface); overflow: hidden; margin-bottom: 16px; transition: border-color .15s; }
+  .empty-input-wrap:focus-within { border-color: var(--accent); }
+  .empty-input-inner { display: flex; align-items: flex-end; padding: 14px 14px 10px; gap: 10px; }
+  .empty-input-field { flex: 1; border: none; background: transparent; font-family: var(--font); font-size: 14px; color: var(--text); outline: none; resize: none; min-height: 24px; }
+  .empty-input-field::placeholder { color: var(--text3); }
+  .empty-input-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 12px; }
+  .plus-btn { width: 28px; height: 28px; border-radius: 6px; border: 1.5px solid var(--border); background: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text3); transition: border-color .12s, color .12s; position: relative; }
+  .plus-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .model-label { font-size: 11px; font-family: var(--mono); color: var(--text3); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .model-label:hover { color: var(--text2); }
+  .quick-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+  .chip { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--text2); background: var(--surface); cursor: pointer; transition: border-color .12s, color .12s, background .12s; display: flex; align-items: center; gap: 6px; }
+  .chip:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+
+  /* Plus popover */
+  .plus-popover { position: absolute; bottom: 36px; left: 0; background: var(--surface); border: 1.5px solid var(--border2); border-radius: 8px; overflow: hidden; min-width: 160px; box-shadow: 0 6px 20px rgba(42,40,37,.12); display: none; z-index: 100; }
+  .plus-popover.show { display: block; }
+  .popover-item { display: flex; align-items: center; gap: 9px; padding: 9px 12px; font-size: 12px; color: var(--text2); cursor: pointer; transition: background .1s, color .1s; }
+  .popover-item:hover { background: var(--surface2); color: var(--text); }
+  .popover-divider { height: 1px; background: var(--border); }
+
+  /* ── CHAT MESSAGES ─────────────────────────────── */
+  .messages { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+  .msg-group { display: flex; flex-direction: column; gap: 4px; }
+  .msg-role { font-size: 9px; font-family: var(--mono); letter-spacing: .08em; color: var(--text3); text-transform: uppercase; margin-bottom: 2px; }
+  .msg-role-tag { display: inline-block; background: var(--surface2); padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border); }
+  .msg-bubble { padding: 12px 16px; border-radius: 8px; font-size: 13px; line-height: 1.6; border: 1.5px solid var(--border); max-width: 680px; }
+  .msg-bubble.user { background: var(--surface2); align-self: flex-end; max-width: 480px; }
+  .msg-bubble.assistant { background: var(--surface); }
+  .tool-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 3px 8px; font-size: 10px; font-family: var(--mono); color: var(--text2); margin-bottom: 8px; }
+  .tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+  /* ── CHAT INPUT (existing conv) ──────────────── */
+  .input-area { padding: 12px 32px 16px; border-top: 1.5px solid var(--border); background: var(--bg); flex-shrink: 0; }
+  .input-box { border: 1.5px solid var(--border2); border-radius: 10px; background: var(--surface); overflow: hidden; transition: border-color .15s; }
+  .input-box:focus-within { border-color: var(--accent); }
+  .input-main { display: flex; align-items: flex-end; padding: 10px 12px; gap: 10px; }
+  .input-field { flex: 1; border: none; background: transparent; font-family: var(--font); font-size: 13px; color: var(--text); outline: none; resize: none; min-height: 20px; max-height: 120px; }
+  .input-field::placeholder { color: var(--text3); }
+  .send-btn { width: 30px; height: 30px; border-radius: 6px; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #f0ede8; flex-shrink: 0; }
+  .input-footer-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px 10px; }
+  .input-hint { font-size: 10px; font-family: var(--mono); color: var(--text3); }
+
+  /* Folder attached indicator */
+  .folder-badge { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; font-size: 11px; color: var(--text2); font-family: var(--mono); flex-shrink: 0; }
+  .folder-badge-close { cursor: pointer; color: var(--text3); margin-left: 4px; }
+  .folder-badge-close:hover { color: var(--red); }
+
+  /* ── RIGHT PANEL — CONNECTORS ONLY ──────────── */
+  .right-panel { background: var(--surface); border-left: 1.5px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-header { padding: 12px 14px 10px; border-bottom: 1.5px solid var(--border); flex-shrink: 0; }
+  .panel-header-title { font-size: 10px; font-family: var(--mono); letter-spacing: .08em; color: var(--text3); text-transform: uppercase; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 14px; }
+
+  .conn-section-label { font-size: 9px; font-family: var(--mono); letter-spacing: .08em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; margin-top: 16px; }
+  .conn-section-label:first-child { margin-top: 0; }
+
+  .conn-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; margin-bottom: 6px; background: var(--bg); }
+  .conn-icon { width: 28px; height: 28px; border: 1.5px solid var(--border); border-radius: 5px; background: var(--surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .conn-name { font-size: 12px; font-weight: 500; flex: 1; color: var(--text); }
+  .conn-status { font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 3px; border: 1px solid; }
+  .status-connected { color: var(--green); border-color: var(--green); }
+  .status-not { color: var(--text3); border-color: var(--border); }
+  .conn-quota { font-size: 9px; font-family: var(--mono); color: var(--text3); }
+
+  /* Internal files */
+  .file-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px; margin-bottom: 5px; background: var(--bg); font-size: 11px; }
+  .file-row-icon { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-row-info { flex: 1; min-width: 0; }
+  .file-row-name { font-size: 12px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row-meta { font-size: 9px; font-family: var(--mono); color: var(--text3); margin-top: 1px; }
+  .file-type-tag { font-size: 9px; font-family: var(--mono); padding: 1px 5px; border-radius: 3px; background: var(--surface2); border: 1px solid var(--border); color: var(--text3); }
+
+  .upload-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: 1.5px dashed var(--border2); border-radius: 7px; background: none; font-family: var(--mono); font-size: 11px; color: var(--text3); cursor: pointer; transition: border-color .12s, color .12s; margin-top: 6px; }
+  .upload-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Upload modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(42,40,37,.55); z-index: 200; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { width: 440px; background: var(--bg); border: 1.5px solid var(--border2); border-radius: 12px; overflow: hidden; }
+  .modal-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .modal-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text3); line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+  .modal-body { padding: 20px; }
+  .modal-label { font-size: 10px; font-family: var(--mono); letter-spacing: .08em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; }
+  .file-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .file-type-card { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 7px; cursor: pointer; transition: border-color .12s, background .12s; }
+  .file-type-card:hover { border-color: var(--border2); background: var(--surface2); }
+  .file-type-card.selected { border-color: var(--accent); background: var(--surface2); }
+  .file-type-card-name { font-size: 12px; font-weight: 500; color: var(--text); }
+  .file-type-card-desc { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+  .drop-area { border: 1.5px dashed var(--border2); border-radius: 8px; padding: 24px; text-align: center; color: var(--text3); font-size: 12px; cursor: pointer; transition: border-color .12s; }
+  .drop-area:hover { border-color: var(--accent); }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .btn-cancel { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 6px; background: none; font-family: var(--font); font-size: 12px; color: var(--text2); cursor: pointer; }
+  .btn-primary { padding: 7px 14px; border: 1.5px solid var(--accent); border-radius: 6px; background: var(--accent); font-family: var(--font); font-size: 12px; color: var(--bg); cursor: pointer; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Title bar -->
+<div class="titlebar">
+  <div class="titlebar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  <div class="titlebar-title">Origo — UI Redesign v2 · Interactive Wireframe</div>
+</div>
+
+<div class="app" style="position:relative;">
+
+  <!-- ── SIDEBAR ─────────────────────────────────── -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Origo</div>
+        <div class="brand-sub">import/export AI</div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="showEmptyState()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Chat
+    </button>
+
+    <div class="section-label">Chats</div>
+    <div class="conv-list" id="convList">
+      <div class="conv-item active" onclick="selectConv(this,'EU buyer research — Q2')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="conv-text">EU buyer research — Q2</span>
+        <button class="conv-del" onclick="event.stopPropagation()">×</button>
+      </div>
+      <div class="conv-item" onclick="selectConv(this,'Supplier shortlist — Germany')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="conv-text">Supplier shortlist — Germany</span>
+        <button class="conv-del" onclick="event.stopPropagation()">×</button>
+      </div>
+      <div class="conv-item" onclick="selectConv(this,'HS code — industrial valves')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="conv-text">HS code — industrial valves</span>
+        <button class="conv-del" onclick="event.stopPropagation()">×</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-label">Navigate</div>
+    <div class="nav-section">
+      <div class="nav-item" onclick="selectNav(this,'market')" id="nav-market">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Market
+      </div>
+      <div class="nav-item" onclick="selectNav(this,'tasks')" id="nav-tasks">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tasks
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar">T</div>
+        <div class="user-info">
+          <div class="user-name">takuo@origo.co</div>
+          <div class="user-plan">import/export AI</div>
+        </div>
+        <button class="gear-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MAIN AREA ────────────────────────────────── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">EU buyer research — Q2</div>
+      <button class="topbar-btn">Share ↗</button>
+      <button class="topbar-btn">Sonnet 4.6 ▾</button>
+      <button class="topbar-btn primary">Customize ⊕</button>
+    </div>
+
+    <!-- ── EMPTY STATE (New Chat) ── -->
+    <div id="emptyView" style="display:none;" class="empty-state">
+      <div class="greeting">
+        <svg class="greeting-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+        สวัสดีตอนเย็น, takuo
+      </div>
+
+      <div class="empty-input-wrap">
+        <div class="empty-input-inner">
+          <textarea class="empty-input-field" rows="2" placeholder="วันนี้อยากให้ช่วยอะไรครับ?"></textarea>
+        </div>
+        <div class="empty-input-footer">
+          <div style="position:relative;">
+            <button class="plus-btn" onclick="togglePlusMenu(event,'emptyPlus')" id="emptyPlusBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="plus-popover" id="emptyPlus">
+              <div class="popover-item" onclick="attachFile()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Attach file
+              </div>
+              <div class="popover-divider"></div>
+              <div class="popover-item" onclick="openFolder()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Open folder
+                <span style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-left:auto;">AI can edit</span>
+              </div>
+            </div>
+          </div>
+          <div class="model-label">
+            Sonnet 4.6
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-chips">
+        <div class="chip" onclick="fillPrompt('หา Supplier ใน EU สำหรับสินค้าของเรา')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          หา Supplier
+        </div>
+        <div class="chip" onclick="fillPrompt('วิเคราะห์ตลาดสำหรับ SKU ของเรา')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          วิเคราะห์ตลาด
+        </div>
+        <div class="chip" onclick="fillPrompt('ค้นหา HS Code สำหรับสินค้า')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          HS Code
+        </div>
+        <div class="chip" onclick="fillPrompt('คำนวณราคาขายและ margin')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          คำนวณราคา
+        </div>
+        <div class="chip" onclick="fillPrompt('สรุปข้อมูล shipment ล่าสุด')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          Shipment
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHAT VIEW ── -->
+    <div id="chatView" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="messages" id="messageArea">
+        <div class="msg-group">
+          <div class="msg-role"><span class="msg-role-tag">YOU</span></div>
+          <div class="msg-bubble user">หา buyer ใน EU ที่น่าจะสนใจ industrial valves DN50–DN200 ของเราครับ</div>
+        </div>
+        <div class="msg-group">
+          <div class="msg-role"><span class="msg-role-tag">CLAUDE</span></div>
+          <div class="msg-bubble assistant">
+            <div class="tool-badge"><div class="tool-dot"></div>Searching companies</div>
+            <div>พบ 24 บริษัทที่มีศักยภาพใน EU ครับ นี่คือ top 5 ที่ตรงกับสเปค DN50–DN200...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat input — minimal, "+" only -->
+      <div class="input-area">
+        <div id="folderIndicator" style="display:none;margin-bottom:8px;">
+          <div class="folder-badge" style="display:inline-flex;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:11px;">Documents/Deals</span>
+            <span class="folder-badge-close" onclick="closeFolder()">×</span>
+          </div>
+        </div>
+        <div class="input-box">
+          <div class="input-main">
+            <textarea class="input-field" rows="1" placeholder="Reply..."></textarea>
+            <button class="send-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+          <div class="input-footer-bar">
+            <div style="position:relative;display:flex;align-items:center;gap:8px;">
+              <button class="plus-btn" onclick="togglePlusMenu(event,'chatPlus')" id="chatPlusBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <div class="plus-popover" id="chatPlus">
+                <div class="popover-item" onclick="attachFile()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  Attach file
+                </div>
+                <div class="popover-divider"></div>
+                <div class="popover-item" onclick="openFolder()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  Open folder
+                  <span style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-left:auto;">AI can edit</span>
+                </div>
+              </div>
+            </div>
+            <div class="model-label">Sonnet 4.6 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigate placeholder views -->
+    <div id="marketView" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg);">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--border2)" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <div style="font-size:13px;font-weight:600;color:var(--text);">Market</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">trade intelligence · coming soon</div>
+    </div>
+    <div id="tasksView" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg);">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--border2)" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <div style="font-size:13px;font-weight:600;color:var(--text);">Tasks</div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">coming soon</div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL — CONNECTORS ONLY ───────────── -->
+  <div class="right-panel">
+    <div class="panel-header">
+      <div class="panel-header-title">Connectors</div>
+    </div>
+    <div class="panel-body">
+
+      <div class="conn-section-label">External</div>
+
+      <div class="conn-row">
+        <div class="conn-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div class="conn-name">Tendata</div>
+          <div class="conn-quota">487 / 500 pts remaining</div>
+        </div>
+        <span class="conn-status status-connected">Live</span>
+      </div>
+
+      <div class="conn-section-label" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Internal Data</span>
+        <button class="upload-btn" style="width:auto;padding:3px 8px;margin:0;font-size:9px;border-radius:4px;border-style:solid;" onclick="openUploadModal()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Upload
+        </button>
+      </div>
+
+      <div class="file-row">
+        <div class="file-row-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="file-row-info">
+          <div class="file-row-name">shipments_2024.csv</div>
+          <div class="file-row-meta">156 rows · 9 columns</div>
+        </div>
+        <span class="file-type-tag">shipment</span>
+      </div>
+
+      <div class="file-row">
+        <div class="file-row-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="file-row-info">
+          <div class="file-row-name">invoices_Q1.csv</div>
+          <div class="file-row-meta">48 rows · 7 columns</div>
+        </div>
+        <span class="file-type-tag">invoice</span>
+      </div>
+
+      <div class="file-row">
+        <div class="file-row-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="file-row-info">
+          <div class="file-row-name">products.csv</div>
+          <div class="file-row-meta">8 rows · 12 columns</div>
+        </div>
+        <span class="file-type-tag">product</span>
+      </div>
+
+      <button class="upload-btn" onclick="openUploadModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Upload company data
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal-overlay" id="uploadModal" onclick="if(event.target===this)closeUploadModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Upload company data</div>
+      <button class="modal-close" onclick="closeUploadModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-label" style="margin-bottom:10px;">File type</div>
+      <div class="file-type-grid">
+        <div class="file-type-card selected" onclick="selectType(this)">
+          <div class="file-type-card-name">Shipment</div>
+          <div class="file-type-card-desc">export / import records</div>
+        </div>
+        <div class="file-type-card" onclick="selectType(this)">
+          <div class="file-type-card-name">Invoice</div>
+          <div class="file-type-card-desc">billing documents</div>
+        </div>
+        <div class="file-type-card" onclick="selectType(this)">
+          <div class="file-type-card-name">Product</div>
+          <div class="file-type-card-desc">SKU catalog</div>
+        </div>
+        <div class="file-type-card" onclick="selectType(this)">
+          <div class="file-type-card-name">Customer</div>
+          <div class="file-type-card-desc">buyers / contacts</div>
+        </div>
+      </div>
+      <div class="modal-label">File</div>
+      <div class="drop-area">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;display:block;color:var(--border2);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Drop CSV here or <span style="color:var(--text);text-decoration:underline;cursor:pointer;">browse</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeUploadModal()">Cancel</button>
+      <button class="btn-primary">Upload</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activePlusMenu = null;
+
+  function selectConv(el, title) {
+    document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('topbarTitle').textContent = title;
+    showChatView();
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  }
+
+  function showEmptyState() {
+    document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('topbarTitle').textContent = 'New Chat';
+    document.getElementById('emptyView').style.display = 'flex';
+    document.getElementById('chatView').style.display = 'none';
+    document.getElementById('marketView').style.display = 'none';
+    document.getElementById('tasksView').style.display = 'none';
+  }
+
+  function showChatView() {
+    document.getElementById('emptyView').style.display = 'none';
+    document.getElementById('chatView').style.display = 'flex';
+    document.getElementById('marketView').style.display = 'none';
+    document.getElementById('tasksView').style.display = 'none';
+  }
+
+  function selectNav(el, key) {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('emptyView').style.display = 'none';
+    document.getElementById('chatView').style.display = 'none';
+    document.getElementById('marketView').style.display = 'none';
+    document.getElementById('tasksView').style.display = 'none';
+    const v = document.getElementById(key + 'View');
+    if (v) { v.style.display = 'flex'; v.style.flexDirection = 'column'; }
+    document.getElementById('topbarTitle').textContent = el.textContent.trim();
+  }
+
+  function togglePlusMenu(e, id) {
+    e.stopPropagation();
+    const menu = document.getElementById(id);
+    const isOpen = menu.classList.contains('show');
+    if (activePlusMenu) document.getElementById(activePlusMenu).classList.remove('show');
+    activePlusMenu = isOpen ? null : id;
+    menu.classList.toggle('show', !isOpen);
+  }
+  document.addEventListener('click', () => {
+    if (activePlusMenu) { document.getElementById(activePlusMenu).classList.remove('show'); activePlusMenu = null; }
+  });
+
+  function attachFile() {
+    if (activePlusMenu) { document.getElementById(activePlusMenu).classList.remove('show'); activePlusMenu = null; }
+    // Stub
+  }
+
+  function openFolder() {
+    if (activePlusMenu) { document.getElementById(activePlusMenu).classList.remove('show'); activePlusMenu = null; }
+    document.getElementById('folderIndicator').style.display = 'block';
+  }
+  function closeFolder() { document.getElementById('folderIndicator').style.display = 'none'; }
+
+  function fillPrompt(text) {
+    const fields = document.querySelectorAll('.empty-input-field, .input-field');
+    fields.forEach(f => f.value = text);
+  }
+
+  function openUploadModal() { document.getElementById('uploadModal').classList.add('show'); }
+  function closeUploadModal() { document.getElementById('uploadModal').classList.remove('show'); }
+
+  function selectType(el) {
+    document.querySelectorAll('.file-type-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+</script>
+</body>
+</html>

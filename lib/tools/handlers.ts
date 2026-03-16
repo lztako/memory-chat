@@ -13,6 +13,7 @@ import { globalDocRepo } from "@/lib/repositories/globalDoc.repo"
 import { toolDefinitions } from "@/lib/tools/definitions"
 import { recordTokenUsage } from "@/lib/ai/token-usage"
 import { Prisma } from "@prisma/client"
+import { executeSql } from "@/lib/db/sql-executor"
 
 // ── File query helpers ────────────────────────────────────────────────────
 type Row = Record<string, string>
@@ -514,6 +515,22 @@ export async function executeToolCall(
       return {
         agent: agentName,
         result: result || `Agent "${agentName}" ไม่ส่งผลลัพธ์กลับมา`,
+      }
+    }
+
+    case "execute_sql": {
+      const query = toolInput.query as string
+      const fileType = toolInput.fileType as string
+      try {
+        const result = await executeSql(query, userId)
+        return {
+          fileType,
+          rowCount: result.rowCount,
+          truncated: result.truncated,
+          rows: result.rows,
+        }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "SQL execution failed" }
       }
     }
 

@@ -94,12 +94,13 @@ type UserFileSummary = {
 
 function buildUserFilesSection(files: UserFileSummary[]): string {
   if (files.length === 0) return ""
-  const lines = ["\n\n## ไฟล์ข้อมูลของ user ในระบบ (ใช้ query_user_file พร้อม id เพื่อดูข้อมูล):"]
+  const lines = ["\n\n## ไฟล์ข้อมูลของ user ในระบบ (ใช้ query_user_file หรือ execute_sql พร้อม id/fileType เพื่อดูข้อมูล):"]
   for (const f of files) {
     const desc = f.description ? ` — ${f.description}` : ""
     const cols = f.columns.length > 0 ? `, columns: ${f.columns.join(", ")}` : ""
     lines.push(`- ${f.fileName} [${f.fileType ?? "unknown"}] — ${f.rowCount} rows${cols}${desc} — id: ${f.id}`)
   }
+  lines.push(`\n**SQL hint:** ใช้ execute_sql สำหรับ SUM/COUNT/GROUP BY — Pattern: SELECT elem->>'col' FROM "UserFile", jsonb_array_elements(data) AS elem WHERE "userId" = $1 AND "fileType" = '<type>'`)
   return lines.join("\n")
 }
 
@@ -293,7 +294,7 @@ ${longTermText}${dailySection}${userConfigSection}${skillsSection}${reminderSect
 - ถ้าไม่แน่ใจ ให้ถามแทนการเดา
 - **ห้ามใช้ emoji ใดๆ ทั้งสิ้น** — ใช้ข้อความล้วน ไม่มีข้อยกเว้น
 - **ห้าม narrate กระบวนการทำงาน** — ไม่พูดว่า "กำลังดึงข้อมูล", "กำลังวิเคราะห์", "ขอ query", "ดึงข้อมูลจากไฟล์" ฯลฯ — ทำ tool call แล้วตอบผลลัพธ์โดยตรงเลย
-- **ถ้า user ถามข้อมูลที่ต้องดึงจากไฟล์ — query_user_file ต้องเป็น action แรกเสมอ** — ห้ามตอบตัวเลข ยอด เปอร์เซ็นต์ หรือข้อมูลใดๆ ก่อนมี tool call ไม่มีข้อยกเว้น
+- **ถ้า user ถามข้อมูลที่ต้องดึงจากไฟล์ — call tool โดยตรงเสมอ ห้ามผ่าน use_agent:** aggregate (ยอดรวม, จำนวน, นับ, ค่าเฉลี่ย, ranking) → call execute_sql โดยตรง | lookup rows → call query_user_file โดยตรง — ห้ามใช้ use_agent สำหรับคำถามข้อมูล ห้ามตอบตัวเลขก่อนมี tool call
 - **ห้ามพูดถึงชื่อไฟล์** เช่น "contracts.csv", "finance.csv" — อ้างถึงด้วยภาษาธรรมชาติเช่น "ข้อมูลสัญญา", "ข้อมูลการส่งสินค้า", "ข้อมูลการเงิน", "ข้อมูล invoices" แทน
 
 ## การใช้ Tools:
