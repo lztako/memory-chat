@@ -171,8 +171,11 @@ export function MarketView() {
                       <th style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "var(--text3)", fontWeight: 500, letterSpacing: ".04em", borderBottom: "1px solid var(--border)" }}>
                         Trades
                       </th>
+                      <th style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "var(--text3)", fontWeight: 500, letterSpacing: ".04em", borderBottom: "1px solid var(--border)" }}>
+                        Suppliers
+                      </th>
                       <th style={{ padding: "7px 20px", textAlign: "right", fontSize: 11, color: "var(--text3)", fontWeight: 500, letterSpacing: ".04em", borderBottom: "1px solid var(--border)" }}>
-                        Last Buy
+                        Last Active
                       </th>
                     </tr>
                   </thead>
@@ -205,8 +208,11 @@ export function MarketView() {
                               )}
                             </div>
                           </td>
-                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: "var(--text2)" }}>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: "var(--text2)", fontVariantNumeric: "tabular-nums" }}>
                             {company.trades.toLocaleString()}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: "var(--text2)", fontVariantNumeric: "tabular-nums" }}>
+                            {company.supplier_number}
                           </td>
                           <td style={{ padding: "9px 20px", textAlign: "right", fontSize: 11, color: "var(--text3)" }}>
                             {company.latest_purchase_time?.slice(0, 7) ?? "—"}
@@ -216,7 +222,7 @@ export function MarketView() {
                     })}
                     {!loading && filtered.length === 0 && (
                       <tr>
-                        <td colSpan={3} style={{ padding: "32px 20px", textAlign: "center", fontSize: 13, color: "var(--text3)" }}>
+                        <td colSpan={4} style={{ padding: "32px 20px", textAlign: "center", fontSize: 13, color: "var(--text3)" }}>
                           No companies match
                         </td>
                       </tr>
