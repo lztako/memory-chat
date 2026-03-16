@@ -125,7 +125,8 @@ function BarChartWidget({ widget }: { widget: ComputedBarChart }) {
             <LabelList
               dataKey="value"
               position="top"
-              formatter={(v: number) => Number(v).toLocaleString()}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(v: any) => Number(v).toLocaleString()}
               style={{ fontSize: 10, fill: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
             />
           </Bar>
