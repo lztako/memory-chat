@@ -2,7 +2,7 @@
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line,
+  PieChart, Pie, Cell, Legend, LineChart, Line, LabelList,
 } from "recharts"
 import type { ComputedWidget, ComputedKPI, ComputedBarChart, ComputedDonut, ComputedTable, ComputedHorizontalBar, ComputedProgressKPI, ComputedLineChart } from "@/app/chat/dashboard/page"
 
@@ -21,10 +21,12 @@ function formatValue(value: number, format: string): string {
   return String(value)
 }
 
-function shortValue(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`
-  return `$${value}`
+function shortValue(value: number, format?: string): string {
+  const isCurrency = !format || format === "currency_usd"
+  const prefix = isCurrency ? "$" : ""
+  if (value >= 1_000_000) return `${prefix}${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${prefix}${(value / 1_000).toFixed(0)}K`
+  return `${prefix}${value}`
 }
 
 // ── Status badge ───────────────────────────────────────────────────
@@ -106,8 +108,8 @@ function BarChartWidget({ widget }: { widget: ComputedBarChart }) {
       }}>
         {widget.title}
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={widget.data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={widget.data} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="label"
@@ -115,19 +117,18 @@ function BarChartWidget({ widget }: { widget: ComputedBarChart }) {
             axisLine={false} tickLine={false}
           />
           <YAxis
-            tickFormatter={(v) => shortValue(v)}
+            tickFormatter={(v) => shortValue(v, widget.valueFormat)}
             tick={{ fontSize: 10, fill: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono)" }}
             axisLine={false} tickLine={false} width={52}
           />
-          <Tooltip
-            formatter={(v) => [formatValue(Number(v), widget.valueFormat ?? "currency_usd"), widget.title]}
-            contentStyle={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: 6, fontSize: 11,
-            }}
-            labelStyle={{ color: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
-          />
-          <Bar dataKey="value" fill="#8b7355" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="value" fill="#8b7355" radius={[3, 3, 0, 0]} activeBar={false}>
+            <LabelList
+              dataKey="value"
+              position="top"
+              formatter={(v: number) => Number(v).toLocaleString()}
+              style={{ fontSize: 10, fill: "var(--text2)", fontFamily: "var(--font-ibm-plex-mono)" }}
+            />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -221,7 +222,17 @@ function TableWidget({ widget }: { widget: ComputedTable }) {
         {widget.title}
       </div>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+          <colgroup>
+            {widget.columns.map((col) => {
+              const w: Record<string, string> = {
+                contract_no: "130px", customer: "18%", product: "16%",
+                qty_contracted: "110px", bal: "80px",
+                delivery_end: "120px", team: "80px",
+              }
+              return <col key={col} style={{ width: w[col] ?? "auto" }} />
+            })}
+          </colgroup>
           <thead>
             <tr style={{ borderBottom: "1.5px solid var(--border)" }}>
               {widget.columns.map((col) => (
@@ -235,6 +246,8 @@ function TableWidget({ widget }: { widget: ComputedTable }) {
                   color: "var(--text3)",
                   fontWeight: 600,
                   whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}>
                   {col.replace(/_/g, " ")}
                 </th>
@@ -395,18 +408,6 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
   if (widgets.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)" }}>
-        {/* Topbar */}
-        <div style={{
-          height: 52,
-          borderBottom: "1.5px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 20px",
-          background: "var(--surface)",
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Dashboard</span>
-        </div>
         <EmptyDashboard />
       </div>
     )
@@ -414,57 +415,26 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }}>
-      {/* Topbar */}
-      <div style={{
-        height: 52,
-        borderBottom: "1.5px solid var(--border)",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 24px",
-        background: "var(--surface)",
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Dashboard</span>
-        <span style={{
-          marginLeft: 10,
-          fontSize: 9,
-          fontFamily: "var(--font-ibm-plex-mono), monospace",
-          letterSpacing: ".08em",
-          textTransform: "uppercase",
-          color: "var(--text3)",
-          padding: "2px 7px",
-          border: "1px solid var(--border)",
-          borderRadius: 4,
-        }}>
-          Sugar Export
-        </span>
-      </div>
-
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
 
         {/* KPI row */}
         {kpis.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(kpis.length, 4)}, 1fr)`, gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(kpis.length, 4)}, 1fr)`, gap: 12 }}>
             {kpis.map((w) => <KPICard key={w.id} widget={w} />)}
           </div>
         )}
 
         {/* Progress KPI row */}
         {progressKpis.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(progressKpis.length, 4)}, 1fr)`, gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(progressKpis.length, 4)}, 1fr)`, gap: 12 }}>
             {progressKpis.map((w) => <ProgressKPIWidget key={w.id} widget={w} />)}
           </div>
         )}
 
         {/* Charts — 2-column grid, layout:"full" spans both columns */}
         {charts.length > 0 && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-            marginBottom: 12,
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {charts.map((w) => {
               const isFull = (w as ComputedWidget).layout === "full"
               return (
@@ -483,14 +453,14 @@ export function DashboardView({ widgets }: { widgets: ComputedWidget[] }) {
         {tables.length > 0 && (() => {
           const hasHalf = tables.some(w => w.layout === "half")
           if (!hasHalf) {
-            return tables.map((w) => (
-              <div key={w.id} style={{ marginBottom: 12 }}>
-                <TableWidget widget={w} />
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {tables.map((w) => <TableWidget key={w.id} widget={w} />)}
               </div>
-            ))
+            )
           }
           return (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {tables.map((w) => (
                 <div key={w.id} style={w.layout !== "half" ? { gridColumn: "1 / -1" } : {}}>
                   <TableWidget widget={w} />

@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>memory-chat — Import/Export AI Wireframe</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f5f0;
+    --surface: #eeeae2;
+    --surface2: #e4dfd5;
+    --border: #ccc8be;
+    --border2: #aaa69e;
+    --text: #1e1c18;
+    --text2: #5a5650;
+    --text3: #9a9690;
+    --accent: #1a4a6b;
+    --accent2: #2c7a4b;
+    --warn: #b85c00;
+    --red: #c0392b;
+    --font: 'Sarabun', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: #d8d4cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Frame wrapper ── */
+  .frame {
+    width: 1280px;
+    height: 820px;
+    background: var(--bg);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── Titlebar ── */
+  .titlebar {
+    height: 36px;
+    background: var(--surface2);
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--border); border: 1px solid var(--border2); }
+  .tb-title { margin: 0 auto; font-family: var(--mono); font-size: 11px; color: var(--text3); letter-spacing: .04em; }
+
+  /* ── App layout ── */
+  .app { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 200px;
+    background: var(--surface);
+    border-right: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .brand-area {
+    padding: 16px 14px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .brand-mark {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 13px; font-weight: 700;
+  }
+  .brand-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .brand-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); padding-left: 36px; }
+
+  .nav { padding: 10px 8px; flex: 1; }
+  .nav-label {
+    font-size: 9px; font-family: var(--mono); color: var(--text3);
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: 0 6px; margin: 10px 0 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 8px; border-radius: 7px;
+    font-size: 13px; font-weight: 400; cursor: pointer;
+    color: var(--text2); margin-bottom: 1px;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: white; font-weight: 500; }
+  .nav-item .icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .nav-badge {
+    margin-left: auto; min-width: 18px; height: 18px;
+    border-radius: 9px; font-size: 10px; font-family: var(--mono);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 5px;
+  }
+  .nav-item.active .nav-badge { background: rgba(255,255,255,.2); color: white; }
+  .nav-item:not(.active) .nav-badge { background: var(--border); color: var(--text2); }
+  .nav-badge.red { background: var(--red) !important; color: white !important; }
+
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 8px;
+  }
+  .user-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 7px; cursor: pointer;
+  }
+  .user-row:hover { background: var(--surface2); }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  .user-name { font-size: 12px; font-weight: 500; flex: 1; }
+  .user-plan { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+  /* ── Main content ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Tab pages ── */
+  .page { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+  .page.active { display: flex; }
+
+  /* ── Page Header ── */
+  .page-header {
+    padding: 16px 24px 12px;
+    border-bottom: 1.5px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  .page-title { font-size: 16px; font-weight: 600; flex: 1; }
+  .page-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .hdr-btn {
+    padding: 5px 12px; border: 1.5px solid var(--border);
+    border-radius: 6px; font-size: 11px; font-family: var(--mono);
+    cursor: pointer; background: var(--surface); color: var(--text2);
+  }
+  .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .hdr-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .hdr-btn.primary:hover { opacity: .85; }
+
+  /* ════════════════════════════════
+     PAGE 1: CHAT
+  ════════════════════════════════ */
+  .chat-layout { display: flex; flex: 1; overflow: hidden; }
+
+  .conv-list {
+    width: 220px; border-right: 1.5px solid var(--border);
+    background: var(--surface); display: flex; flex-direction: column;
+    overflow: hidden; flex-shrink: 0;
+  }
+  .conv-search {
+    padding: 10px; border-bottom: 1px solid var(--border);
+  }
+  .search-input {
+    width: 100%; padding: 6px 10px;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    font-family: var(--font); font-size: 12px;
+    background: var(--bg); color: var(--text); outline: none;
+  }
+  .conv-group-label {
+    font-size: 9px; font-family: var(--mono); color: var(--text3);
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 8px 12px 4px;
+  }
+  .conv-item {
+    padding: 8px 12px; cursor: pointer; border-radius: 0;
+    border-left: 2px solid transparent;
+  }
+  .conv-item:hover { background: var(--surface2); }
+  .conv-item.active { border-left-color: var(--accent); background: var(--surface2); }
+  .conv-item-title { font-size: 12px; font-weight: 500; color: var(--text); }
+  .conv-item-meta { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .chat-topbar {
+    padding: 10px 20px; border-bottom: 1.5px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .chat-conv-title { font-size: 13px; font-weight: 500; flex: 1; }
+  .model-tag {
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    padding: 3px 7px; border: 1px solid var(--border); border-radius: 4px;
+  }
+
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .msg-row { display: flex; gap: 10px; }
+  .msg-row.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 2px;
+  }
+  .msg-avatar.ai { background: var(--accent); color: white; }
+  .msg-avatar.user { background: var(--surface2); color: var(--text2); border: 1.5px solid var(--border); }
+
+  .msg-content { max-width: 600px; }
+  .msg-bubble {
+    padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.65;
+    border: 1.5px solid var(--border);
+  }
+  .msg-bubble.ai { background: var(--surface); }
+  .msg-bubble.user { background: var(--accent); color: white; border-color: var(--accent); }
+  .msg-time { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 4px; padding: 0 4px; }
+  .msg-row.user .msg-time { text-align: right; }
+
+  .tool-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 3px 8px; font-size: 10px;
+    font-family: var(--mono); color: var(--text2); margin: 4px 3px 0 0;
+  }
+  .tool-chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); }
+
+  .memory-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(26,74,107,.08); border: 1px solid rgba(26,74,107,.2);
+    border-radius: 4px; padding: 2px 7px; font-size: 10px;
+    font-family: var(--mono); color: var(--accent); margin-top: 6px;
+  }
+
+  .chat-input-area { padding: 14px 20px 16px; border-top: 1.5px solid var(--border); flex-shrink: 0; }
+  .input-wrap {
+    border: 1.5px solid var(--border2); border-radius: 10px;
+    background: var(--surface); overflow: hidden;
+  }
+  .input-wrap:focus-within { border-color: var(--accent); }
+  .input-row { display: flex; align-items: flex-end; padding: 10px 12px; gap: 8px; }
+  .input-field {
+    flex: 1; border: none; background: transparent; font-family: var(--font);
+    font-size: 13px; color: var(--text); outline: none; resize: none;
+  }
+  .input-field::placeholder { color: var(--text3); }
+  .send-btn {
+    width: 30px; height: 30px; background: var(--accent); border: none;
+    border-radius: 6px; cursor: pointer; color: white; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .input-hints {
+    padding: 6px 12px; border-top: 1px solid var(--border);
+    display: flex; gap: 6px; align-items: center;
+  }
+  .hint-tag {
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px;
+    cursor: pointer;
+  }
+  .hint-tag:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ════════════════════════════════
+     PAGE 2: MARKET INTEL
+  ════════════════════════════════ */
+  .intel-layout { display: flex; flex: 1; overflow: hidden; }
+  .intel-controls {
+    width: 280px; border-right: 1.5px solid var(--border);
+    background: var(--surface); padding: 16px; overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .field-label { font-size: 10px; font-family: var(--mono); color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 5px; margin-top: 12px; }
+  .field-label:first-child { margin-top: 0; }
+  .select-field, .text-field {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--border);
+    border-radius: 6px; font-family: var(--font); font-size: 12px;
+    background: var(--bg); color: var(--text); outline: none;
+  }
+  .select-field:focus, .text-field:focus { border-color: var(--accent); }
+  .btn-group { display: flex; gap: 6px; margin-top: 14px; }
+  .btn {
+    flex: 1; padding: 8px; border-radius: 6px; font-family: var(--font);
+    font-size: 12px; font-weight: 500; cursor: pointer; text-align: center;
+  }
+  .btn-primary { background: var(--accent); color: white; border: none; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-secondary { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
+
+  .cost-note {
+    margin-top: 10px; padding: 8px 10px;
+    background: rgba(184,92,0,.08); border: 1px solid rgba(184,92,0,.2);
+    border-radius: 6px; font-size: 11px; color: var(--warn);
+    font-family: var(--mono);
+  }
+
+  .intel-results { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .results-header {
+    padding: 12px 20px; border-bottom: 1.5px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .results-count { font-size: 12px; font-family: var(--mono); color: var(--text3); }
+  .results-body { flex: 1; overflow-y: auto; }
+
+  .company-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px; border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .company-row:hover { background: var(--surface); }
+  .company-rank {
+    width: 24px; font-size: 11px; font-family: var(--mono);
+    color: var(--text3); text-align: right; flex-shrink: 0;
+  }
+  .company-logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--text2); flex-shrink: 0;
+  }
+  .company-info { flex: 1; }
+  .company-name { font-size: 13px; font-weight: 500; }
+  .company-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .company-volume {
+    text-align: right; flex-shrink: 0;
+  }
+  .volume-num { font-size: 13px; font-weight: 600; color: var(--accent); font-family: var(--mono); }
+  .volume-unit { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+  .company-trend { font-size: 11px; color: var(--accent2); font-family: var(--mono); }
+  .company-actions { display: flex; gap: 5px; flex-shrink: 0; }
+  .action-btn {
+    padding: 4px 8px; border: 1.5px solid var(--border); border-radius: 5px;
+    font-size: 10px; font-family: var(--mono); cursor: pointer; color: var(--text2);
+    background: var(--bg);
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ════════════════════════════════
+     PAGE 3: TASKS / PIPELINE
+  ════════════════════════════════ */
+  .tasks-layout { display: flex; flex: 1; overflow: hidden; }
+  .tasks-main { flex: 1; overflow-y: auto; padding: 20px; }
+  .tasks-sidebar { width: 260px; border-left: 1.5px solid var(--border); background: var(--surface); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+
+  .section-title {
+    font-size: 11px; font-family: var(--mono); color: var(--text3);
+    letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .task-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+    cursor: pointer; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .task-card:hover { border-color: var(--border2); }
+  .task-card.overdue { border-color: rgba(192,57,43,.3); background: rgba(192,57,43,.04); }
+  .task-check {
+    width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border2);
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .task-card.overdue .task-check { border-color: var(--red); }
+  .task-body { flex: 1; }
+  .task-title { font-size: 13px; font-weight: 500; }
+  .task-meta { font-size: 11px; color: var(--text3); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .task-tag {
+    padding: 1px 6px; border-radius: 3px; font-size: 10px; font-family: var(--mono);
+    border: 1px solid;
+  }
+  .tag-urgent { color: var(--red); border-color: var(--red); background: rgba(192,57,43,.08); }
+  .tag-high { color: var(--warn); border-color: var(--warn); background: rgba(184,92,0,.08); }
+  .tag-normal { color: var(--text3); border-color: var(--border); }
+  .tag-company { color: var(--accent); border-color: rgba(26,74,107,.3); background: rgba(26,74,107,.06); }
+  .task-due { font-size: 10px; font-family: var(--mono); }
+  .task-due.overdue { color: var(--red); font-weight: 500; }
+  .task-due.soon { color: var(--warn); }
+  .task-due.ok { color: var(--text3); }
+
+  .quick-add {
+    border: 1.5px dashed var(--border); border-radius: 8px;
+    padding: 10px 14px; display: flex; align-items: center; gap: 8px;
+    color: var(--text3); font-size: 12px; cursor: pointer; margin-bottom: 16px;
+  }
+  .quick-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Stats in task sidebar */
+  .stat-box {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 12px; margin-bottom: 10px;
+  }
+  .stat-num { font-size: 24px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .stat-num.red { color: var(--red); }
+  .stat-num.warn { color: var(--warn); }
+  .stat-num.green { color: var(--accent2); }
+
+  /* ════════════════════════════════
+     PAGE 4: DATA / FILES
+  ════════════════════════════════ */
+  .data-layout { flex: 1; overflow-y: auto; padding: 20px; }
+  .upload-zone {
+    border: 2px dashed var(--border2); border-radius: 10px;
+    padding: 28px; text-align: center; margin-bottom: 20px; cursor: pointer;
+  }
+  .upload-zone:hover { border-color: var(--accent); background: rgba(26,74,107,.03); }
+  .upload-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--text3); }
+
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left; padding: 8px 14px; font-size: 10px;
+    font-family: var(--mono); color: var(--text3); letter-spacing: .06em;
+    text-transform: uppercase; border-bottom: 1.5px solid var(--border);
+  }
+  .data-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .data-table tr:hover td { background: var(--surface); }
+  .file-icon { font-size: 18px; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 8px; border-radius: 4px; font-size: 10px; font-family: var(--mono);
+    border: 1px solid;
+  }
+  .status-ready { color: var(--accent2); border-color: var(--accent2); background: rgba(44,122,75,.08); }
+  .status-review { color: var(--warn); border-color: var(--warn); background: rgba(184,92,0,.08); }
+  .status-error { color: var(--red); border-color: var(--red); background: rgba(192,57,43,.08); }
+
+  .validation-note {
+    margin-top: 6px; padding: 3px 6px;
+    font-size: 10px; font-family: var(--mono); color: var(--warn);
+  }
+
+  /* ════════════════════════════════
+     PAGE 5: PROFILE
+  ════════════════════════════════ */
+  .profile-layout { flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
+  .profile-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .profile-card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600;
+  }
+  .profile-card-body { padding: 14px 16px; }
+
+  .memory-item {
+    display: flex; gap: 8px; padding: 7px 0;
+    border-bottom: 1px solid var(--border); font-size: 12px;
+    align-items: flex-start;
+  }
+  .memory-item:last-child { border-bottom: none; }
+  .memory-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
+  .memory-text { flex: 1; line-height: 1.5; }
+  .memory-edit { font-size: 11px; color: var(--text3); cursor: pointer; flex-shrink: 0; }
+  .memory-edit:hover { color: var(--accent); }
+
+  .usage-bar-wrap { margin-top: 6px; }
+  .usage-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .usage-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+  .usage-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+  .usage-fill.warn { background: var(--warn); }
+
+  .config-row {
+    display: flex; align-items: center; padding: 8px 0;
+    border-bottom: 1px solid var(--border); gap: 10px;
+  }
+  .config-row:last-child { border-bottom: none; }
+  .config-key { font-size: 11px; font-family: var(--mono); color: var(--text3); width: 100px; flex-shrink: 0; }
+  .config-val { font-size: 12px; color: var(--text); flex: 1; }
+  .config-edit { font-size: 11px; color: var(--text3); cursor: pointer; }
+  .config-edit:hover { color: var(--accent); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Annotation ── */
+  .anno {
+    position: absolute; background: #fffbe6; border: 1.5px solid #f0c040;
+    border-radius: 5px; padding: 4px 9px; font-size: 10px; font-family: var(--mono);
+    color: #7a5c00; white-space: nowrap; z-index: 99; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="tb-title">memory-chat — Import/Export AI Wireframe · Origo</div>
+  </div>
+
+  <div class="app">
+
+    <!-- ── SIDEBAR ── -->
+    <div class="sidebar">
+      <div class="brand-area">
+        <div class="brand">
+          <div class="brand-mark">O</div>
+          <div class="brand-name">Origo AI</div>
+        </div>
+        <div class="brand-sub">Import/Export Assistant</div>
+      </div>
+
+      <div class="nav">
+        <div class="nav-label">Main</div>
+        <div class="nav-item active" onclick="showPage('chat', this)">
+          <span class="icon">💬</span> Chat
+        </div>
+        <div class="nav-item" onclick="showPage('intel', this)">
+          <span class="icon">🔍</span> Market Intel
+          <span class="nav-badge">Tendata</span>
+        </div>
+        <div class="nav-item" onclick="showPage('tasks', this)">
+          <span class="icon">✅</span> Tasks
+          <span class="nav-badge red">3</span>
+        </div>
+        <div class="nav-item" onclick="showPage('data', this)">
+          <span class="icon">📁</span> Data
+          <span class="nav-badge">1</span>
+        </div>
+
+        <div class="nav-label" style="margin-top:16px;">Account</div>
+        <div class="nav-item" onclick="showPage('profile', this)">
+          <span class="icon">👤</span> Profile & AI
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-row">
+          <div class="avatar">O</div>
+          <div>
+            <div class="user-name">Origo Co.</div>
+            <div class="user-plan">500 pts/day</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ PAGE: CHAT ════════ -->
+    <div class="page active" id="page-chat">
+      <div class="chat-layout">
+        <!-- Conversation list -->
+        <div class="conv-list">
+          <div class="conv-search">
+            <input class="search-input" placeholder="ค้นหาการสนทนา...">
+          </div>
+          <div class="conv-group-label">วันนี้</div>
+          <div class="conv-item active">
+            <div class="conv-item-title">หา buyer สำหรับ Q2</div>
+            <div class="conv-item-meta">Market Intel · 14:32</div>
+          </div>
+          <div class="conv-item">
+            <div class="conv-item-title">วิเคราะห์ shipment Q1</div>
+            <div class="conv-item-meta">Data Analysis · 10:05</div>
+          </div>
+          <div class="conv-group-label">เมื่อวาน</div>
+          <div class="conv-item">
+            <div class="conv-item-title">เตรียม quotation — DE</div>
+            <div class="conv-item-meta">Documents · เมื่อวาน</div>
+          </div>
+          <div class="conv-item">
+            <div class="conv-item-title">ตรวจสอบ supplier ใหม่</div>
+            <div class="conv-item-meta">Research · เมื่อวาน</div>
+          </div>
+          <div class="conv-group-label">สัปดาห์นี้</div>
+          <div class="conv-item">
+            <div class="conv-item-title">วางแผน EU expansion</div>
+            <div class="conv-item-meta">Strategy · 2 วันที่แล้ว</div>
+          </div>
+        </div>
+
+        <!-- Chat area -->
+        <div class="chat-area">
+          <div class="chat-topbar">
+            <div class="chat-conv-title">หา buyer สำหรับ Q2</div>
+            <span class="model-tag">Sonnet 4.6</span>
+            <button class="hdr-btn">Export</button>
+          </div>
+
+          <div class="chat-messages">
+            <!-- Reminder injected -->
+            <div style="display:flex; justify-content:center;">
+              <div style="background:rgba(184,92,0,.08);border:1px solid rgba(184,92,0,.25);border-radius:6px;padding:6px 14px;font-size:11px;color:var(--warn);font-family:var(--mono);">
+                ⏰ Task เลยกำหนด: ส่งใบ quotation ให้ Müller GmbH · ครบ 2 มี.ค.
+              </div>
+            </div>
+
+            <div class="msg-row">
+              <div class="msg-avatar ai">AI</div>
+              <div class="msg-content">
+                <div class="msg-bubble ai">
+                  สวัสดีครับ วันนี้มีงานที่เลยกำหนดแล้ว 1 รายการ — quotation ของ Müller GmbH อยากให้ช่วยจัดการก่อนไหมครับ หรือจะดำเนินการเรื่อง buyer Q2 ต่อ?
+                  <div style="margin-top:6px;">
+                    <span class="memory-pill">📌 จาก memory: ตลาดหลัก EU + ASEAN</span>
+                  </div>
+                </div>
+                <div class="msg-time">14:30</div>
+              </div>
+            </div>
+
+            <div class="msg-row user">
+              <div class="msg-avatar user">ฉัน</div>
+              <div class="msg-content">
+                <div class="msg-bubble user">ค้นหา buyer อุตสาหกรรมในเยอรมนีที่นำเข้าสินค้าจากไทย ปี 2025</div>
+                <div class="msg-time">14:31</div>
+              </div>
+            </div>
+
+            <div class="msg-row">
+              <div class="msg-avatar ai">AI</div>
+              <div class="msg-content">
+                <div class="msg-bubble ai">
+                  กำลังค้นหาข้อมูลจาก Tendata ครับ...
+                  <div style="margin-top:8px;">
+                    <span class="tool-chip"><span class="tool-chip-dot"></span>list_trade_companies(country=DE, type=importer)</span>
+                    <span class="tool-chip"><span class="tool-chip-dot"></span>rank_trade_companies(market=DE→TH)</span>
+                  </div>
+                  <div style="margin-top:8px;">
+                    พบ <strong>47 บริษัท</strong> ที่ import จากไทยในปี 2025 — Top 5 ได้แก่ Müller GmbH, Bayer Industries, Bosch Trading... อยากดูรายละเอียดบริษัทไหนก่อนครับ?
+                  </div>
+                </div>
+                <div class="msg-time">14:32</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <div class="input-wrap">
+              <div class="input-row">
+                <textarea class="input-field" rows="1" placeholder="ถามอะไรก็ได้เกี่ยวกับ import/export..."></textarea>
+                <button class="send-btn">↑</button>
+              </div>
+              <div class="input-hints">
+                <span class="hint-tag">🔍 ค้นหา buyer</span>
+                <span class="hint-tag">📊 วิเคราะห์ data</span>
+                <span class="hint-tag">📝 ร่าง quotation</span>
+                <span class="hint-tag">✅ สร้าง task</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ PAGE: MARKET INTEL ════════ -->
+    <div class="page" id="page-intel">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Market Intelligence</div>
+          <div class="page-sub">ข้อมูลจาก Tendata · อัปเดตรายวัน</div>
+        </div>
+        <button class="hdr-btn">📊 Export results</button>
+      </div>
+      <div class="intel-layout">
+        <div class="intel-controls">
+          <div class="field-label">ประเภท</div>
+          <select class="select-field">
+            <option>Importer (ผู้นำเข้า)</option>
+            <option>Exporter (ผู้ส่งออก)</option>
+          </select>
+
+          <div class="field-label">ประเทศ</div>
+          <select class="select-field">
+            <option>เยอรมนี (DE)</option>
+            <option>ไทย (TH)</option>
+            <option>ญี่ปุ่น (JP)</option>
+            <option>สิงคโปร์ (SG)</option>
+          </select>
+
+          <div class="field-label">HS Code / สินค้า</div>
+          <input class="text-field" placeholder="เช่น 8471 หรือ industrial machinery">
+
+          <div class="field-label">ช่วงเวลา</div>
+          <select class="select-field">
+            <option>2025 ทั้งปี</option>
+            <option>Q1 2025</option>
+            <option>Q4 2024</option>
+          </select>
+
+          <div class="field-label">เรียงตาม</div>
+          <select class="select-field">
+            <option>Volume สูงสุด</option>
+            <option>จำนวน shipment</option>
+            <option>Growth rate</option>
+          </select>
+
+          <div class="btn-group">
+            <button class="btn btn-primary">🔍 ค้นหา</button>
+            <button class="btn btn-secondary">Reset</button>
+          </div>
+
+          <div class="cost-note">ค่าใช้จ่าย: ~12 pts/หน้า<br>เหลือ: 380/500 pts วันนี้</div>
+        </div>
+
+        <div class="intel-results">
+          <div class="results-header">
+            <div style="font-size:13px;font-weight:500;">Importer จากไทย · เยอรมนี · 2025</div>
+            <div class="results-count">47 บริษัท</div>
+            <div style="margin-left:auto; display:flex; gap:6px;">
+              <button class="hdr-btn">List</button>
+              <button class="hdr-btn">Map</button>
+            </div>
+          </div>
+          <div class="results-body">
+            <div class="company-row">
+              <div class="company-rank">#1</div>
+              <div class="company-logo">M</div>
+              <div class="company-info">
+                <div class="company-name">Müller GmbH</div>
+                <div class="company-meta">Hamburg · Industrial Equipment · 34 shipments</div>
+              </div>
+              <div class="company-volume">
+                <div class="volume-num">$8.4M</div>
+                <div class="volume-unit">trade value</div>
+                <div class="company-trend">↑ 23%</div>
+              </div>
+              <div class="company-actions">
+                <button class="action-btn">💬 Chat</button>
+                <button class="action-btn">✅ Task</button>
+                <button class="action-btn">⭐</button>
+              </div>
+            </div>
+            <div class="company-row">
+              <div class="company-rank">#2</div>
+              <div class="company-logo">B</div>
+              <div class="company-info">
+                <div class="company-name">Bayer Industries</div>
+                <div class="company-meta">Munich · Chemical Equipment · 28 shipments</div>
+              </div>
+              <div class="company-volume">
+                <div class="volume-num">$6.1M</div>
+                <div class="volume-unit">trade value</div>
+                <div class="company-trend">↑ 8%</div>
+              </div>
+              <div class="company-actions">
+                <button class="action-btn">💬 Chat</button>
+                <button class="action-btn">✅ Task</button>
+                <button class="action-btn">⭐</button>
+              </div>
+            </div>
+            <div class="company-row">
+              <div class="company-rank">#3</div>
+              <div class="company-logo">K</div>
+              <div class="company-info">
+                <div class="company-name">Krause Trading GmbH</div>
+                <div class="company-meta">Frankfurt · Auto Parts · 19 shipments</div>
+              </div>
+              <div class="company-volume">
+                <div class="volume-num">$4.7M</div>
+                <div class="volume-unit">trade value</div>
+                <div class="company-trend" style="color:var(--red);">↓ 4%</div>
+              </div>
+              <div class="company-actions">
+                <button class="action-btn">💬 Chat</button>
+                <button class="action-btn">✅ Task</button>
+                <button class="action-btn">⭐</button>
+              </div>
+            </div>
+            <div class="company-row">
+              <div class="company-rank">#4</div>
+              <div class="company-logo">S</div>
+              <div class="company-info">
+                <div class="company-name">Schneider Logistics</div>
+                <div class="company-meta">Berlin · General Cargo · 15 shipments</div>
+              </div>
+              <div class="company-volume">
+                <div class="volume-num">$3.2M</div>
+                <div class="volume-unit">trade value</div>
+                <div class="company-trend">↑ 41%</div>
+              </div>
+              <div class="company-actions">
+                <button class="action-btn">💬 Chat</button>
+                <button class="action-btn">✅ Task</button>
+                <button class="action-btn">⭐</button>
+              </div>
+            </div>
+            <div class="company-row">
+              <div class="company-rank">#5</div>
+              <div class="company-logo">W</div>
+              <div class="company-info">
+                <div class="company-name">Wagner & Co</div>
+                <div class="company-meta">Stuttgart · Machinery · 12 shipments</div>
+              </div>
+              <div class="company-volume">
+                <div class="volume-num">$2.9M</div>
+                <div class="volume-unit">trade value</div>
+                <div class="company-trend">↑ 15%</div>
+              </div>
+              <div class="company-actions">
+                <button class="action-btn">💬 Chat</button>
+                <button class="action-btn">✅ Task</button>
+                <button class="action-btn">⭐</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ PAGE: TASKS ════════ -->
+    <div class="page" id="page-tasks">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Tasks</div>
+          <div class="page-sub">3 เลยกำหนด · 2 ครบใน 24h</div>
+        </div>
+        <button class="hdr-btn primary">+ สร้าง Task</button>
+      </div>
+      <div class="tasks-layout">
+        <div class="tasks-main">
+
+          <div class="quick-add">
+            <span>+</span> เพิ่ม task ใหม่อย่างรวดเร็ว...
+          </div>
+
+          <div class="section-title">
+            <div class="section-dot" style="background:var(--red);"></div>
+            เลยกำหนดแล้ว (3)
+          </div>
+
+          <div class="task-card overdue">
+            <div class="task-check"></div>
+            <div class="task-body">
+              <div class="task-title">ส่งใบ quotation ให้ Müller GmbH</div>
+              <div class="task-meta">
+                <span class="task-tag tag-urgent">urgent</span>
+                <span class="task-tag tag-company">Müller GmbH</span>
+                <span class="task-due overdue">เลย 6 วัน · ครบ 2 มี.ค.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-card overdue">
+            <div class="task-check"></div>
+            <div class="task-body">
+              <div class="task-title">ติดต่อ customs broker เรื่อง shipment #2341</div>
+              <div class="task-meta">
+                <span class="task-tag tag-high">high</span>
+                <span class="task-due overdue">เลย 2 วัน · ครบ 6 มี.ค.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-card overdue">
+            <div class="task-check"></div>
+            <div class="task-body">
+              <div class="task-title">รายงานยอดขาย Q1 ส่งบัญชี</div>
+              <div class="task-meta">
+                <span class="task-tag tag-high">high</span>
+                <span class="task-due overdue">เลย 1 วัน · ครบ 7 มี.ค.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:20px;">
+            <div class="section-dot" style="background:var(--warn);"></div>
+            ครบใน 24 ชั่วโมง (2)
+          </div>
+
+          <div class="task-card">
+            <div class="task-check"></div>
+            <div class="task-body">
+              <div class="task-title">ประชุม video call กับ supplier ญี่ปุ่น</div>
+              <div class="task-meta">
+                <span class="task-tag tag-normal">normal</span>
+                <span class="task-tag tag-company">Yamamoto Co.</span>
+                <span class="task-due soon">ครบวันนี้ 16:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-card">
+            <div class="task-check"></div>
+            <div class="task-body">
+              <div class="task-title">ตรวจสอบ L/C document ก่อน deadline</div>
+              <div class="task-meta">
+                <span class="task-tag tag-urgent">urgent</span>
+                <span class="task-due soon">ครบพรุ่งนี้ 09:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:20px;">
+            <div class="section-dot" style="background:var(--border2);"></div>
+            กำลังดำเนินการ (4)
+          </div>
+
+          <div class="task-card">
+            <div class="task-check" style="border-color:var(--accent2); background:rgba(44,122,75,.1);"></div>
+            <div class="task-body">
+              <div class="task-title">Research ตลาด ASEAN สำหรับ H2 2025</div>
+              <div class="task-meta">
+                <span class="task-tag tag-normal">normal</span>
+                <span class="task-due ok">ครบ 20 มี.ค.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Task stats sidebar -->
+        <div class="tasks-sidebar">
+          <div style="font-size:11px;font-family:var(--mono);color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;">ภาพรวม</div>
+
+          <div class="stat-box">
+            <div class="stat-num red">3</div>
+            <div class="stat-label">เลยกำหนดแล้ว</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num warn">2</div>
+            <div class="stat-label">ครบใน 24 ชั่วโมง</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">4</div>
+            <div class="stat-label">กำลังดำเนินการ</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num green">12</div>
+            <div class="stat-label">เสร็จสิ้นเดือนนี้</div>
+          </div>
+
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border);">
+            <div style="font-size:11px;font-family:var(--mono);color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">บริษัทที่มี Task มากสุด</div>
+            <div style="font-size:12px; line-height:2; color:var(--text2);">
+              <div>🏢 Müller GmbH <span style="float:right;font-family:var(--mono);color:var(--text3);">3</span></div>
+              <div>🏢 Yamamoto Co. <span style="float:right;font-family:var(--mono);color:var(--text3);">2</span></div>
+              <div>🏢 Bayer Industries <span style="float:right;font-family:var(--mono);color:var(--text3);">1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ PAGE: DATA ════════ -->
+    <div class="page" id="page-data">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Data</div>
+          <div class="page-sub">ไฟล์ข้อมูลภายในองค์กร · 1 รอตรวจสอบ</div>
+        </div>
+        <button class="hdr-btn primary">+ Upload CSV</button>
+      </div>
+      <div class="data-layout">
+        <div class="upload-zone">
+          <div class="upload-icon">📂</div>
+          <div class="upload-title">ลากไฟล์มาวางที่นี่</div>
+          <div class="upload-sub">รองรับ .csv, .xlsx · AI จะช่วยตรวจสอบความถูกต้องก่อนใช้งาน</div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ไฟล์</th>
+              <th>ประเภท</th>
+              <th>Records</th>
+              <th>อัปโหลด</th>
+              <th>สถานะ</th>
+              <th>การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="file-icon">📊</span>
+                  <div>
+                    <div style="font-weight:500;">shipment_Q1_2025.csv</div>
+                    <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">2.4 MB</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="task-tag tag-company" style="font-size:10px;">shipment</span></td>
+              <td style="font-family:var(--mono);font-size:12px;">1,247</td>
+              <td style="font-size:11px;color:var(--text3);">1 มี.ค.</td>
+              <td><span class="status-badge status-ready">✓ Ready</span></td>
+              <td style="display:flex;gap:5px;">
+                <button class="action-btn">💬 Query</button>
+                <button class="action-btn">⬇ Export</button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="file-icon">📋</span>
+                  <div>
+                    <div style="font-weight:500;">buyer_list_EU_2025.csv</div>
+                    <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">156 KB</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="task-tag tag-company" style="font-size:10px;">lead</span></td>
+              <td style="font-family:var(--mono);font-size:12px;">89</td>
+              <td style="font-size:11px;color:var(--text3);">7 มี.ค.</td>
+              <td>
+                <span class="status-badge status-review">⚠ Review</span>
+                <div class="validation-note">AI พบ 4 รายการที่ควรตรวจสอบ</div>
+              </td>
+              <td style="display:flex;gap:5px;">
+                <button class="action-btn" style="border-color:var(--warn);color:var(--warn);">🔍 ตรวจสอบ</button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="file-icon">🧾</span>
+                  <div>
+                    <div style="font-weight:500;">invoice_2024_archive.csv</div>
+                    <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">8.1 MB</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="task-tag tag-company" style="font-size:10px;">invoice</span></td>
+              <td style="font-family:var(--mono);font-size:12px;">3,891</td>
+              <td style="font-size:11px;color:var(--text3);">15 ก.พ.</td>
+              <td><span class="status-badge status-ready">✓ Ready</span></td>
+              <td style="display:flex;gap:5px;">
+                <button class="action-btn">💬 Query</button>
+                <button class="action-btn">⬇ Export</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Validation note box -->
+        <div style="margin-top:20px; background:rgba(184,92,0,.06); border:1.5px solid rgba(184,92,0,.25); border-radius:8px; padding:14px 16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--warn);margin-bottom:8px;">⚠ buyer_list_EU_2025.csv — รอการตรวจสอบ</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7;">
+            AI ตรวจพบปัญหาต่อไปนี้ — กรุณา approve หรือ reject ก่อนใช้งาน:
+          </div>
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+              <span style="color:var(--red);">●</span> Row 23: ชื่อบริษัทว่างเปล่า
+              <button class="action-btn" style="margin-left:auto;">✓ ข้าม</button>
+              <button class="action-btn" style="border-color:var(--red);color:var(--red);">✕ ลบ</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+              <span style="color:var(--warn);">●</span> Row 45: รูปแบบ email ไม่ถูกต้อง
+              <button class="action-btn" style="margin-left:auto;">✓ เก็บไว้</button>
+              <button class="action-btn" style="border-color:var(--red);color:var(--red);">✕ ลบ</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+              <span style="color:var(--warn);">●</span> Row 67, 68: อาจ duplicate (ชื่อเดิม สะกดต่างกัน)
+              <button class="action-btn" style="margin-left:auto;">✓ รวมกัน</button>
+              <button class="action-btn">เก็บแยก</button>
+            </div>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px;">
+            <button class="btn btn-primary" style="flex:none;padding:6px 16px;font-size:12px;border-radius:6px;">✓ Approve ทั้งหมด</button>
+            <button class="btn btn-secondary" style="flex:none;padding:6px 16px;font-size:12px;border-radius:6px;">💬 ถาม AI เพิ่มเติม</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ════════ PAGE: PROFILE ════════ -->
+    <div class="page" id="page-profile">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Profile & AI Config</div>
+          <div class="page-sub">ข้อมูลที่ AI รู้เกี่ยวกับคุณ</div>
+        </div>
+        <button class="hdr-btn">แก้ไข</button>
+      </div>
+      <div class="profile-layout">
+
+        <!-- Memory card -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <span>📌</span> Long-term Memory
+            <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--text3);">6 รายการ</span>
+          </div>
+          <div class="profile-card-body">
+            <div class="memory-item">
+              <div class="memory-dot"></div>
+              <div class="memory-text">ทำงาน import/export มากกว่า 18 ปี เชี่ยวชาญสินค้าอุตสาหกรรม</div>
+              <div class="memory-edit">✏</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot"></div>
+              <div class="memory-text">ตลาดหลัก: EU (เยอรมนี ออสเตรีย) และ ASEAN</div>
+              <div class="memory-edit">✏</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot"></div>
+              <div class="memory-text">บริษัท Origo Co., Ltd. — Bangkok</div>
+              <div class="memory-edit">✏</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot"></div>
+              <div class="memory-text">ใช้ Incoterms: CIF, FOB เป็นหลัก</div>
+              <div class="memory-edit">✏</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot"></div>
+              <div class="memory-text">สกุลเงินที่ใช้: USD, EUR</div>
+              <div class="memory-edit">✏</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot"></div>
+              <div class="memory-text">เป้าหมาย Q2: ขยายฐาน buyer ในเยอรมนี</div>
+              <div class="memory-edit">✏</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Config card -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <span>⚙</span> AI Config (Per-user)
+          </div>
+          <div class="profile-card-body">
+            <div class="config-row">
+              <div class="config-key">ภาษา</div>
+              <div class="config-val">ไทย (ผสม EN technical terms)</div>
+              <div class="config-edit">✏</div>
+            </div>
+            <div class="config-row">
+              <div class="config-key">สไตล์</div>
+              <div class="config-val">ตรงประเด็น ไม่อธิบายยาว</div>
+              <div class="config-edit">✏</div>
+            </div>
+            <div class="config-row">
+              <div class="config-key">Domain</div>
+              <div class="config-val">Industrial goods, B2B</div>
+              <div class="config-edit">✏</div>
+            </div>
+            <div class="config-row">
+              <div class="config-key">Reminder</div>
+              <div class="config-val">แจ้งเตือน task ที่ overdue</div>
+              <div class="config-edit">✏</div>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
+              AI จะเรียนรู้และอัปเดต config นี้อัตโนมัติจากการสนทนา
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage card -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <span>📊</span> การใช้งานวันนี้
+          </div>
+          <div class="profile-card-body">
+            <div class="usage-bar-wrap">
+              <div class="usage-row"><span>Tendata Points</span><span style="font-family:var(--mono);">120 / 500</span></div>
+              <div class="usage-bar"><div class="usage-fill" style="width:24%;"></div></div>
+
+              <div class="usage-row"><span>AI Tokens (input)</span><span style="font-family:var(--mono);">48K</span></div>
+              <div class="usage-bar"><div class="usage-fill" style="width:35%;background:var(--accent2);"></div></div>
+
+              <div class="usage-row"><span>AI Tokens (output)</span><span style="font-family:var(--mono);">12K</span></div>
+              <div class="usage-bar"><div class="usage-fill" style="width:15%;background:var(--accent2);"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily log card -->
+        <div class="profile-card">
+          <div class="profile-card-header">
+            <span>📝</span> Daily Log (วันนี้)
+            <span style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--text3);">reset พรุ่งนี้</span>
+          </div>
+          <div class="profile-card-body">
+            <div class="memory-item">
+              <div class="memory-dot" style="background:var(--accent2);"></div>
+              <div class="memory-text">กำลังหา buyer ในเยอรมนีสำหรับ Q2</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot" style="background:var(--accent2);"></div>
+              <div class="memory-text">ต้องส่ง quotation Müller GmbH — urgent</div>
+            </div>
+            <div class="memory-item">
+              <div class="memory-dot" style="background:var(--accent2);"></div>
+              <div class="memory-text">วิเคราะห์ shipment Q1 เสร็จแล้ว</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end app -->
+</div><!-- end frame -->
+
+<script>
+  function showPage(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    el.classList.add('active');
+  }
+</script>
+</body>
+</html>

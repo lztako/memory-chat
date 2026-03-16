@@ -80,9 +80,17 @@ export async function POST(req: Request) {
     }
   }
 
-  const activeTools = folderContext
-    ? [...toolDefinitions, ...localFolderToolDefinitions]
-    : toolDefinitions
+  const webTools = [
+    { type: "web_search_20250305" as const, name: "web_search" as const, max_uses: 3 },
+    { type: "web_fetch_20250910" as const, name: "web_fetch" as const, max_content_tokens: 50_000 },
+  ]
+
+  const activeTools = [
+    ...toolDefinitions,
+    ...(folderContext ? localFolderToolDefinitions : []),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(webTools as any[]),
+  ]
 
   // Build user message content — text only or text + images
   type UserContent = string | Anthropic.ContentBlockParam[]
@@ -129,25 +137,81 @@ export async function POST(req: Request) {
 
       const MAX_TOOL_ITERATIONS = 10
       let toolIterations = 0
+      // Accumulate all tool calls across iterations for persistence
+      const allToolCalls: { id: string; name: string; done: boolean; input?: string }[] = []
 
-      // ── Mock mode (MOCK_AI=true in .env.local) ──────────────────
-      if (process.env.MOCK_AI === "true") {
-        await new Promise(r => setTimeout(r, 800))
-        controller.enqueue(sse("tool_start", { id: "mock-1", name: "query_user_file" }))
-        await new Promise(r => setTimeout(r, 1200))
-        controller.enqueue(sse("tool_done", { id: "mock-1" }))
-        await new Promise(r => setTimeout(r, 300))
-        const mockText = `นี่คือผลลัพธ์จาก mock mode ครับ\n\nระบบกำลังทดสอบ UI โดยไม่เรียก Claude API\n\n**ข้อมูลทดสอบ:**\n- รายการ 1: White Sugar 45 ICUMSA\n- รายการ 2: Raw Sugar 600 ICUMSA\n- รายการ 3: Brown Sugar\n\nสามารถทดสอบ streaming, tool badges, และ markdown rendering ได้ครับ`
-        for (const char of mockText) {
-          controller.enqueue(sse("text", char))
-          await new Promise(r => setTimeout(r, 18))
+      // ── Mock mode (MOCK_AI=1..4 in .env.local) ───────────────────
+      // 1 = single tool call + short text
+      // 2 = multiple tool calls (3 steps) + short text
+      // 3 = no tools, plain text with markdown
+      // 4 = multiple tools + table response
+      const mockScenario = process.env.MOCK_AI
+      if (mockScenario && mockScenario !== "false") {
+        const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
+        const mockToolCalls: { id: string; name: string; done: boolean; input?: string }[] = []
+
+        const runTool = async (id: string, name: string, input: object, ms = 1000) => {
+          controller.enqueue(sse("tool_start", { id, name }))
+          await delay(ms)
+          const inputStr = JSON.stringify(input)
+          controller.enqueue(sse("tool_done", { id, input: inputStr }))
+          mockToolCalls.push({ id, name, done: true, input: inputStr })
         }
-        fullResponse = mockText
-        await conversationRepo.addMessage({ conversationId, role: "assistant", content: fullResponse })
+
+        const streamText = async (text: string) => {
+          for (const char of text) {
+            controller.enqueue(sse("text", char))
+            await delay(16)
+          }
+          fullResponse = text
+        }
+
+        // Allow overriding scenario by typing "1"–"4" in the chat message
+        const activeScenario = ["1","2","3","4","5"].includes(message.trim()) ? message.trim() : mockScenario
+
+        if (activeScenario === "1" || activeScenario === "true") {
+          // ── Scenario 1: single query tool ──
+          await delay(600)
+          await runTool("m1", "query_user_file", { fileType: "shipment", filters: [{ column: "customerName", op: "eq", value: "COFCO" }], limit: 50 })
+          await delay(300)
+          await streamText(`พบข้อมูล shipment ของ COFCO ทั้งหมด **12 รายการ**\n\n- สินค้าหลัก: White Sugar 45 ICUMSA\n- ปริมาณรวม: 24,000 MT\n- ช่วงเวลา: ม.ค. – มี.ค. 2568`)
+
+        } else if (activeScenario === "2") {
+          // ── Scenario 2: 3 tool calls ──
+          await delay(500)
+          await runTool("m1", "save_memory", { type: "daily_log", content: "ผู้ใช้ถามเรื่อง shipment" }, 800)
+          await runTool("m2", "query_user_file", { fileType: "shipment", limit: 100 }, 1200)
+          await runTool("m3", "execute_sql", { query: `SELECT "customerName", COUNT(*) as orders FROM "ShipmentRow" WHERE "userId" = $1 GROUP BY "customerName"` }, 900)
+          await delay(300)
+          await streamText(`วิเคราะห์ข้อมูลเรียบร้อยครับ พบลูกค้า **8 ราย** ใน shipment file\n\nลูกค้าที่มี order มากที่สุด: COFCO (12 orders), Czarnikow (8 orders), Wilmar (5 orders)`)
+
+        } else if (activeScenario === "3") {
+          // ── Scenario 3: no tools, pure markdown ──
+          await delay(800)
+          await streamText(`# HS Code น้ำตาล\n\n**1701** คือ HS Code หลักของน้ำตาลทรายทุกประเภท\n\n| ประเภท | HS Code | รายละเอียด |\n|--------|---------|------------|\n| Raw Sugar | 1701.13 | น้ำตาลดิบจากอ้อย |\n| White Sugar | 1701.99 | น้ำตาลทรายขาว |\n| ICUMSA 45 | 1701.99.90 | ระดับความบริสุทธิ์สูงสุด |\n\n> สำหรับการนำเข้าไทย ต้องขอใบอนุญาตจากสำนักงานคณะกรรมการอ้อยและน้ำตาลทราย`)
+
+        } else if (activeScenario === "5") {
+          // ── Scenario 5: 2-column table (width test) ──
+          await delay(400)
+          await streamText(`ยอดขายรวมแยกตาม team ครับ\n\n| Team | ยอดรวม (MT) |\n|------|-------------|\n| PSR | 183,450 |\n| RKX | 97,200 |\n\nPSR มียอดสูงกว่า RKX ประมาณ 88%`)
+
+        } else if (activeScenario === "4") {
+          // ── Scenario 4: 2 tools + table response ──
+          await delay(500)
+          await runTool("m1", "list_user_files", {}, 600)
+          await runTool("m2", "query_user_file", { fileType: "invoice", groupBy: "customerName", aggregate: "sum(amount)" }, 1400)
+          await delay(300)
+          await streamText(`สรุปยอดขายรวมตาม customer ครับ\n\n| ลูกค้า | ยอดรวม (USD) | จำนวน Invoice |\n|--------|-------------|---------------|\n| COFCO | $2,450,000 | 12 |\n| Czarnikow | $1,830,000 | 8 |\n| Wilmar | $980,000 | 5 |\n| Alvean | $760,000 | 4 |\n| **รวม** | **$6,020,000** | **29** |\n\nCOFCO มียอดสูงสุด คิดเป็น 40% ของยอดขายทั้งหมด`)
+        }
+
+        await conversationRepo.addMessage({
+          conversationId, role: "assistant", content: fullResponse,
+          ...(mockToolCalls.length ? { toolCalls: mockToolCalls } : {}),
+        })
         controller.close()
         return
       }
-      // ────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────────────────────
 
       try {
         while (true) {
@@ -155,12 +219,7 @@ export async function POST(req: Request) {
             controller.enqueue(sse("text", "\n\n[หยุดการทำงานอัตโนมัติ — เกิน 10 รอบ กรุณาสั่งใหม่อีกครั้ง]"))
             break
           }
-          // Force tool call on first iteration when user has files — prevents Sonnet
-          // from generating text (e.g. "Let me calculate...") before querying data
-          const toolChoice: Anthropic.Messages.ToolChoiceAuto | Anthropic.Messages.ToolChoiceAny =
-            toolIterations === 0 && userFiles.length > 0
-              ? { type: "any" }
-              : { type: "auto" }
+          const toolChoice: Anthropic.Messages.ToolChoiceAuto = { type: "auto" }
 
           // Cache system prompt + tool definitions to reduce input token processing
           // on repeated requests. Cache TTL = 5 min (Anthropic ephemeral cache).
@@ -189,6 +248,7 @@ export async function POST(req: Request) {
             name: string
             inputStr: string
           } | null = null
+          let currentServerBlockId: string | null = null
 
           for await (const event of stream) {
             if (req.signal.aborted) break
@@ -201,6 +261,12 @@ export async function POST(req: Request) {
                   inputStr: "",
                 }
                 controller.enqueue(sse("tool_start", { id: event.content_block.id, name: event.content_block.name }))
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              } else if ((event.content_block as any).type === "server_tool_use") {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const serverBlock = event.content_block as any
+                currentServerBlockId = serverBlock.id
+                controller.enqueue(sse("tool_start", { id: serverBlock.id, name: serverBlock.name }))
               }
             } else if (event.type === "content_block_delta") {
               if (event.delta.type === "text_delta") {
@@ -216,6 +282,9 @@ export async function POST(req: Request) {
               if (currentBlock) {
                 toolUseBlocks.push(currentBlock)
                 currentBlock = null
+              } else if (currentServerBlockId) {
+                controller.enqueue(sse("tool_done", { id: currentServerBlockId }))
+                currentServerBlockId = null
               }
             }
           }
@@ -258,7 +327,7 @@ export async function POST(req: Request) {
                   controller.enqueue(sse("folder_move", { from: input.from, to: input.to }))
                   toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify({ success: true }) })
                 }
-                controller.enqueue(sse("tool_done", { id: block.id }))
+                controller.enqueue(sse("tool_done", { id: block.id, input: block.inputStr }))
                 continue
               }
 
@@ -285,7 +354,8 @@ export async function POST(req: Request) {
                   content: truncateToolResult(block.name, JSON.stringify(result)),
                 })
               }
-              controller.enqueue(sse("tool_done", { id: block.id }))
+              controller.enqueue(sse("tool_done", { id: block.id, input: block.inputStr }))
+              allToolCalls.push({ id: block.id, name: block.name, done: true, input: block.inputStr || undefined })
             }
 
             apiMessages.push({ role: "user", content: toolResults })
@@ -295,7 +365,14 @@ export async function POST(req: Request) {
         }
       } catch (err) {
         if (!req.signal.aborted) {
-          controller.error(err)
+          // Surface billing/quota errors as readable text instead of crashing
+          const msg = err instanceof Error ? err.message : String(err)
+          if (msg.includes("credit balance is too low") || msg.includes("insufficient_quota")) {
+            controller.enqueue(sse("text", "⚠️ เครดิต Anthropic API หมดแล้ว — กรุณาเติม credit ที่ console.anthropic.com → Plans & Billing"))
+            controller.close()
+          } else {
+            controller.error(err)
+          }
           return
         }
       }
@@ -314,6 +391,7 @@ export async function POST(req: Request) {
           conversationId,
           role: "assistant",
           content: fullResponse,
+          ...(allToolCalls.length ? { toolCalls: allToolCalls } : {}),
         })
 
         const allMemories = [...longTerm, ...dailyLog]

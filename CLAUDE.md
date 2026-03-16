@@ -1,5 +1,12 @@
 # CLAUDE.md — memory-chat
 
+## Claude API Knowledge Base
+> **`ClaudeAPIDocs/`** — คลังเอกสาร Anthropic อย่างเป็นทางการ อ่าน `ClaudeAPIDocs/CLAUDE.md` ก่อนเสมอเมื่อ:
+> - implement หรือแก้ไข `app/api/chat/route.ts` (context management, caching, compaction)
+> - เพิ่ม beta feature ใหม่ (ต้องตรวจ beta header + parameter ที่ถูกต้อง)
+> - มีคำถามเกี่ยวกับ Claude API behavior, token counting, หรือ prompt caching
+> - ไม่แน่ใจว่า feature ใหม่ใน SDK ทำงานยังไง
+
 ## Development Process
 > **ดู [`ENGINEERING.md`](./ENGINEERING.md)** สำหรับหลักการพัฒนาทั้งหมด: Now/Next/Later roadmap, ADR format, Appetite/No-gos, Tech Debt 20% rule, Working Backwards, Disagree & Commit, Feature Flags
 >

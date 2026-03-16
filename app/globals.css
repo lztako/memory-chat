@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* ─── Recharts — remove SVG focus ring ───────────────────────── */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-wrapper svg,
+.recharts-wrapper svg:focus { outline: none !important; }
+
 /* ─── Design Tokens — Dark Theme ─────────────────────────────── */
 :root {
   --bg:       #1a1918;
@@ -165,6 +171,22 @@ body {
 .markdown-content hr { border: none; border-top: 1px solid var(--border); margin: 0.75em 0; }
 
 /* ─── Message Entrance ───────────────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin { animation: spin 1s linear infinite; }
+
+@keyframes asterisk-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.asterisk-working {
+  animation: asterisk-rotate 6s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
 @keyframes msgFadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }

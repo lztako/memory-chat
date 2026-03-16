@@ -28,8 +28,12 @@ export const conversationRepo = {
     conversationId: string
     role: string
     content: string
+    toolCalls?: { id: string; name: string; done: boolean; input?: string }[]
   }) {
-    return prisma.message.create({ data })
+    const { toolCalls, ...rest } = data
+    return prisma.message.create({
+      data: { ...rest, ...(toolCalls?.length ? { toolCalls } : {}) },
+    })
   },
 
   async updateTitle(id: string, title: string) {

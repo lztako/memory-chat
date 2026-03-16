@@ -37,7 +37,7 @@ async function loadFolderHandle(convId: string): Promise<FileSystemDirectoryHand
   } catch { return null }
 }
 
-interface ToolCall { id: string; name: string; done: boolean }
+interface ToolCall { id: string; name: string; done: boolean; input?: string }
 interface Message {
   role: "user" | "assistant"
   content: string
@@ -231,14 +231,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             } else if (t === "title_update") {
               router.refresh()
             } else if (t === "tool_done") {
-              const { id } = v as { id: string }
+              const { id, input } = v as { id: string; input?: string }
               setMessages((prev) => {
                 const updated = [...prev]
                 const last = updated[updated.length - 1]
                 updated[updated.length - 1] = {
                   ...last,
                   toolCalls: (last.toolCalls ?? []).map((tc) =>
-                    tc.id === id ? { ...tc, done: true } : tc
+                    tc.id === id ? { ...tc, done: true, input } : tc
                   ),
                 }
                 return updated

@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Cowork — Wireframe</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f0ede8;
+    --surface: #e8e4de;
+    --surface2: #ddd9d2;
+    --border: #b8b2a8;
+    --border2: #9a9490;
+    --text: #2a2825;
+    --text2: #6b6560;
+    --text3: #9a9490;
+    --accent: #2a2825;
+    --red: #c0392b;
+    --blue: #2c5f8a;
+    --green: #2d6a4f;
+    --font: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── Title Bar ─────────────────────────────── */
+  .titlebar {
+    height: 38px;
+    background: var(--surface2);
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .titlebar-dots { display: flex; gap: 6px; }
+  .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--border2);
+  }
+  .titlebar-title {
+    margin: 0 auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: .04em;
+  }
+
+  /* ─── App Shell ──────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    grid-template-rows: 1fr;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── Left Sidebar ───────────────────────────── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .brand-logo {
+    width: 26px; height: 26px;
+    border: 1.5px solid var(--border2);
+    border-radius: 6px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .brand-name { font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+  .brand-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+  .folder-box {
+    background: var(--surface2);
+    border: 1.5px dashed var(--border2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .folder-box:hover { border-color: var(--accent); color: var(--accent); }
+  .folder-icon { font-size: 13px; }
+
+  .sidebar-section { padding: 10px 14px 6px; }
+  .section-label {
+    font-size: 9px;
+    font-family: var(--mono);
+    letter-spacing: .1em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .section-label-add {
+    width: 16px; height: 16px;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text3);
+  }
+  .section-label-add:hover { color: var(--accent); border-color: var(--accent); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text2);
+    margin-bottom: 1px;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #f0ede8; }
+  .nav-item-icon { font-size: 13px; width: 18px; text-align: center; }
+  .nav-item-text { flex: 1; }
+  .nav-item-badge {
+    font-size: 9px;
+    font-family: var(--mono);
+    background: var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .nav-item.active .nav-item-badge { background: rgba(255,255,255,0.2); }
+
+  .plugin-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text2);
+    margin-bottom: 1px;
+  }
+  .plugin-item:hover { background: var(--surface2); }
+  .plugin-dot {
+    width: 8px; height: 8px; border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .plugin-status {
+    margin-left: auto;
+    font-size: 9px;
+    font-family: var(--mono);
+    color: var(--text3);
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .user-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .user-row:hover { background: var(--surface2); }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+  }
+  .user-info { flex: 1; }
+  .user-name { font-size: 12px; font-weight: 500; }
+  .user-plan { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+  /* ─── Main Chat Area ─────────────────────────── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .chat-topbar {
+    height: 44px;
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  .chat-title { font-size: 13px; font-weight: 500; flex: 1; }
+  .topbar-actions { display: flex; gap: 6px; }
+  .topbar-btn {
+    padding: 4px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text2);
+  }
+  .topbar-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .msg-group { display: flex; flex-direction: column; gap: 4px; }
+  .msg-role {
+    font-size: 9px;
+    font-family: var(--mono);
+    letter-spacing: .08em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .msg-role-tag {
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 680px;
+    border: 1.5px solid var(--border);
+  }
+  .msg-bubble.user {
+    background: var(--surface2);
+    align-self: flex-end;
+    max-width: 480px;
+  }
+  .msg-bubble.assistant { background: var(--surface); }
+
+  .tool-call {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border2);
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: var(--mono);
+    margin: 6px 0;
+  }
+  .tool-call-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+  }
+
+  .file-ref {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  /* ─── Input Area ─────────────────────────────── */
+  .input-area {
+    padding: 16px 32px 20px;
+    border-top: 1.5px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+
+  .input-box {
+    border: 1.5px solid var(--border2);
+    border-radius: 10px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .input-box:focus-within { border-color: var(--accent); }
+
+  .input-main {
+    display: flex;
+    align-items: flex-end;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .input-field {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    min-height: 20px;
+    max-height: 120px;
+  }
+  .input-field::placeholder { color: var(--text3); }
+  .send-btn {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: #f0ede8;
+    font-size: 14px;
+  }
+
+  .input-toolbar {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .toolbar-btn {
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: var(--mono);
+    cursor: pointer;
+    background: transparent;
+    color: var(--text3);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .toolbar-btn:hover { color: var(--text); border-color: var(--border2); }
+  .toolbar-hint {
+    margin-left: auto;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text3);
+  }
+
+  /* ─── Slash Command Dropdown ─────────────────── */
+  .slash-dropdown {
+    position: absolute;
+    bottom: 140px;
+    left: 236px;
+    width: 380px;
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    z-index: 100;
+    overflow: hidden;
+    display: none;
+  }
+  .slash-dropdown.show { display: block; }
+  .slash-header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text3);
+    letter-spacing: .06em;
+  }
+  .slash-item {
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .slash-item:hover, .slash-item.selected { background: var(--surface2); }
+  .slash-item-key {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    width: 120px;
+  }
+  .slash-item-desc { font-size: 11px; color: var(--text2); }
+
+  /* ─── Right Panel ────────────────────────────── */
+  .right-panel {
+    background: var(--surface);
+    border-left: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1.5px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-tab {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1.5px;
+  }
+  .panel-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .panel-body { flex: 1; overflow-y: auto; padding: 14px; }
+
+  /* Plugin Card */
+  .plugin-card {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .plugin-card-header {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .plugin-card-icon {
+    width: 32px; height: 32px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .plugin-card-info { flex: 1; }
+  .plugin-card-name { font-size: 12px; font-weight: 600; }
+  .plugin-card-by { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+  .plugin-toggle {
+    width: 32px; height: 18px;
+    border-radius: 9px;
+    border: 1.5px solid var(--border2);
+    background: var(--surface2);
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .plugin-toggle.on { background: var(--accent); border-color: var(--accent); }
+  .plugin-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: white;
+    transition: left .15s;
+  }
+  .plugin-toggle.on::after { left: 16px; }
+
+  .plugin-card-body { padding: 10px 12px; }
+  .plugin-skills-label {
+    font-size: 9px;
+    font-family: var(--mono);
+    color: var(--text3);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .skill-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text2);
+    margin: 2px 3px 2px 0;
+    background: var(--surface);
+  }
+
+  /* Connector */
+  .connector-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: var(--bg);
+  }
+  .connector-icon {
+    width: 28px; height: 28px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .connector-name { font-size: 12px; font-weight: 500; flex: 1; }
+  .connector-status {
+    font-size: 9px;
+    font-family: var(--mono);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid;
+  }
+  .connector-status.connected { color: var(--green); border-color: var(--green); }
+  .connector-status.not { color: var(--text3); border-color: var(--border); }
+
+  /* File Context */
+  .file-context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: var(--bg);
+    font-size: 11px;
+  }
+  .file-context-icon { font-size: 16px; }
+  .file-context-info { flex: 1; }
+  .file-context-name { font-weight: 500; font-size: 12px; }
+  .file-context-meta { color: var(--text3); font-family: var(--mono); font-size: 10px; }
+  .file-context-remove {
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .file-context-remove:hover { color: var(--red); }
+
+  /* Annotation */
+  .annotation {
+    position: absolute;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: #856404;
+    z-index: 50;
+    white-space: nowrap;
+  }
+  .annotation::before {
+    content: '→';
+    margin-right: 4px;
+  }
+
+  /* Marketplace overlay */
+  .marketplace-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(42,40,37,0.6);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    display: none;
+  }
+  .marketplace-overlay.show { display: flex; }
+  .marketplace-modal {
+    width: 640px;
+    max-height: 80vh;
+    background: var(--bg);
+    border: 2px solid var(--border2);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .marketplace-header {
+    padding: 16px 20px;
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .marketplace-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .marketplace-close {
+    width: 28px; height: 28px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .marketplace-search {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .marketplace-search input {
+    width: 100%;
+    padding: 7px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 12px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  .marketplace-grid {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    overflow-y: auto;
+  }
+  .mkt-card {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .mkt-card:hover { border-color: var(--accent); }
+  .mkt-card-top {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .mkt-card-icon { font-size: 20px; }
+  .mkt-card-name { font-size: 12px; font-weight: 600; }
+  .mkt-card-cat { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+  .mkt-card-desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+  .mkt-card-install {
+    margin-top: 8px;
+    padding: 4px 10px;
+    border: 1.5px solid var(--border2);
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: var(--mono);
+    cursor: pointer;
+    background: transparent;
+    color: var(--text2);
+  }
+  .mkt-card-install:hover { background: var(--accent); color: #f0ede8; border-color: var(--accent); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Tab switcher for panel */
+  #panel-plugins { display: block; }
+  #panel-connectors { display: none; }
+  #panel-files { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Title Bar -->
+<div class="titlebar">
+  <div class="titlebar-dots">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="titlebar-title">Claude Cowork — Wireframe Mockup</div>
+</div>
+
+<!-- App Shell -->
+<div class="app" style="position:relative;">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-logo">⬡</div>
+        <div>
+          <div class="brand-name">Cowork</div>
+          <div class="brand-sub">by Anthropic</div>
+        </div>
+      </div>
+      <div class="folder-box" title="เลือกโฟลเดอร์ที่ Claude เข้าถึงได้">
+        <span class="folder-icon">📁</span>
+        <span>/Users/origo/Documents/Deals</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">
+        <span>Conversations</span>
+        <div class="section-label-add">+</div>
+      </div>
+      <div class="nav-item active">
+        <span class="nav-item-icon">💬</span>
+        <span class="nav-item-text">Q1 Deal Analysis</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-item-icon">💬</span>
+        <span class="nav-item-text">Buyer Research — EU</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-item-icon">💬</span>
+        <span class="nav-item-text">Pitch Deck Draft</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">
+        <span>Spaces</span>
+        <div class="section-label-add">+</div>
+      </div>
+      <div class="nav-item">
+        <span class="nav-item-icon">🗂</span>
+        <span class="nav-item-text">EU Expansion</span>
+        <span class="nav-item-badge">3</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-item-icon">🗂</span>
+        <span class="nav-item-text">Q2 Pipeline</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Plugins</div>
+      <div class="plugin-item">
+        <div class="plugin-dot" style="background:#2c5f8a;"></div>
+        <span>Financial Analysis</span>
+        <span class="plugin-status">ON</span>
+      </div>
+      <div class="plugin-item">
+        <div class="plugin-dot" style="background:#2d6a4f;"></div>
+        <span>Sales Research</span>
+        <span class="plugin-status">ON</span>
+      </div>
+      <div class="plugin-item">
+        <div class="plugin-dot" style="background:#7d4e2d;"></div>
+        <span>Legal Review</span>
+        <span class="plugin-status">OFF</span>
+      </div>
+      <div class="plugin-item" onclick="openMarketplace()" style="color:var(--text3); font-size:11px; padding-left:6px;">
+        <span style="font-size:13px;">＋</span>
+        <span>Plugin Marketplace</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar">O</div>
+        <div class="user-info">
+          <div class="user-name">Origo</div>
+          <div class="user-plan">Max Plan</div>
+        </div>
+        <span style="font-size:14px; color:var(--text3);">⚙</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CHAT -->
+  <div class="main">
+    <div class="chat-topbar">
+      <div class="chat-title">Q1 Deal Analysis</div>
+      <div class="topbar-actions">
+        <button class="topbar-btn">Share ↗</button>
+        <button class="topbar-btn">Model: Sonnet 4.6 ▾</button>
+        <button class="topbar-btn" onclick="openMarketplace()">Customize ⊕</button>
+      </div>
+    </div>
+
+    <div class="chat-messages">
+
+      <!-- User message -->
+      <div class="msg-group">
+        <div class="msg-role"><span class="msg-role-tag">YOU</span></div>
+        <div class="msg-bubble user">
+          วิเคราะห์ไฟล์ Q1_deals.xlsx และสร้าง comparable analysis สำหรับ deck พรุ่งนี้
+        </div>
+        <div style="align-self:flex-end;">
+          <span class="file-ref">📊 Q1_deals.xlsx</span>
+          <span class="file-ref">📄 template_deck.pptx</span>
+        </div>
+      </div>
+
+      <!-- Assistant message with tool call -->
+      <div class="msg-group">
+        <div class="msg-role"><span class="msg-role-tag">CLAUDE</span> <span style="font-size:10px;color:var(--text3);">using Financial Analysis plugin</span></div>
+        <div class="msg-bubble assistant">
+          <div>กำลังอ่านไฟล์และวิเคราะห์ข้อมูล...</div>
+          <br>
+          <div class="tool-call"><div class="tool-call-dot"></div>read_file("Q1_deals.xlsx")</div>
+          <div class="tool-call"><div class="tool-call-dot"></div>analyze_comparables(industry="manufacturing")</div>
+          <div class="tool-call"><div class="tool-call-dot"></div>update_slide("template_deck.pptx", slide=3)</div>
+          <br>
+          <div>เสร็จแล้วครับ — พบ 12 deals ใน Q1, EV/EBITDA เฉลี่ยอยู่ที่ 8.4x สร้าง comparable table ใน slide 3 แล้ว และ update executive summary ใน slide 1 ครับ</div>
+        </div>
+      </div>
+
+      <!-- User slash command prompt -->
+      <div class="msg-group">
+        <div class="msg-role"><span class="msg-role-tag">YOU</span></div>
+        <div class="msg-bubble user">
+          /create-pitch สำหรับ buyer ในเยอรมนี focus ที่ synergy และ market position
+        </div>
+      </div>
+
+      <!-- Assistant streaming -->
+      <div class="msg-group">
+        <div class="msg-role"><span class="msg-role-tag">CLAUDE</span></div>
+        <div class="msg-bubble assistant" style="border-style:dashed; color:var(--text2);">
+          <span style="font-family:var(--mono); font-size:11px;">▌ กำลังสร้าง pitch deck...</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area" style="position:relative;">
+
+      <!-- Slash Dropdown -->
+      <div class="slash-dropdown show" id="slashDropdown">
+        <div class="slash-header">COMMANDS — Financial Analysis Plugin</div>
+        <div class="slash-item selected">
+          <div class="slash-item-key">/create-pitch</div>
+          <div class="slash-item-desc">สร้าง pitch deck จากไฟล์ใน context</div>
+        </div>
+        <div class="slash-item">
+          <div class="slash-item-key">/run-model</div>
+          <div class="slash-item-desc">รัน financial model และอัปเดต Excel</div>
+        </div>
+        <div class="slash-item">
+          <div class="slash-item-key">/comp-analysis</div>
+          <div class="slash-item-desc">comparable company analysis</div>
+        </div>
+        <div class="slash-item">
+          <div class="slash-item-key">/summarize-deck</div>
+          <div class="slash-item-desc">สรุป deck เป็น exec summary</div>
+        </div>
+      </div>
+
+      <div class="input-box">
+        <div class="input-main">
+          <textarea class="input-field" rows="1" placeholder="พิมพ์ข้อความ หรือ / สำหรับ commands..."
+            oninput="handleInput(this)">/create-pitch</textarea>
+          <button class="send-btn">↑</button>
+        </div>
+        <div class="input-toolbar">
+          <button class="toolbar-btn">📎 Attach file</button>
+          <button class="toolbar-btn">🖼 Screenshot</button>
+          <button class="toolbar-btn">🔊 Voice</button>
+          <span class="toolbar-hint">/ for commands · ⏎ send · ⇧⏎ newline</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchTab('plugins', this)">Plugins</div>
+      <div class="panel-tab" onclick="switchTab('connectors', this)">Connectors</div>
+      <div class="panel-tab" onclick="switchTab('files', this)">Files</div>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- Plugins Tab -->
+      <div id="panel-plugins">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:10px;letter-spacing:.06em;">INSTALLED · 3 PLUGINS</div>
+
+        <div class="plugin-card">
+          <div class="plugin-card-header">
+            <div class="plugin-card-icon">📊</div>
+            <div class="plugin-card-info">
+              <div class="plugin-card-name">Financial Analysis</div>
+              <div class="plugin-card-by">by Anthropic</div>
+            </div>
+            <div class="plugin-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="plugin-card-body">
+            <div class="plugin-skills-label">Skills</div>
+            <span class="skill-tag">create-pitch</span>
+            <span class="skill-tag">run-model</span>
+            <span class="skill-tag">comp-analysis</span>
+            <span class="skill-tag">summarize-deck</span>
+          </div>
+        </div>
+
+        <div class="plugin-card">
+          <div class="plugin-card-header">
+            <div class="plugin-card-icon">🎯</div>
+            <div class="plugin-card-info">
+              <div class="plugin-card-name">Sales Research</div>
+              <div class="plugin-card-by">by Anthropic</div>
+            </div>
+            <div class="plugin-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="plugin-card-body">
+            <div class="plugin-skills-label">Skills</div>
+            <span class="skill-tag">prospect-research</span>
+            <span class="skill-tag">outreach-draft</span>
+            <span class="skill-tag">crm-update</span>
+          </div>
+        </div>
+
+        <div class="plugin-card" style="opacity:.6;">
+          <div class="plugin-card-header">
+            <div class="plugin-card-icon">⚖️</div>
+            <div class="plugin-card-info">
+              <div class="plugin-card-name">Legal Review</div>
+              <div class="plugin-card-by">by Anthropic</div>
+            </div>
+            <div class="plugin-toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="plugin-card-body">
+            <div class="plugin-skills-label">Skills</div>
+            <span class="skill-tag">review-contract</span>
+            <span class="skill-tag">redline</span>
+          </div>
+        </div>
+
+        <button onclick="openMarketplace()" style="width:100%;padding:8px;border:1.5px dashed var(--border2);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--text3);cursor:pointer;background:transparent;margin-top:4px;">
+          ＋ Browse Marketplace
+        </button>
+      </div>
+
+      <!-- Connectors Tab -->
+      <div id="panel-connectors" style="display:none;">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:10px;letter-spacing:.06em;">MCP CONNECTORS</div>
+
+        <div class="connector-row">
+          <div class="connector-icon">📁</div>
+          <div class="connector-name">Google Drive</div>
+          <span class="connector-status connected">Connected</span>
+        </div>
+        <div class="connector-row">
+          <div class="connector-icon">📧</div>
+          <div class="connector-name">Gmail</div>
+          <span class="connector-status connected">Connected</span>
+        </div>
+        <div class="connector-row">
+          <div class="connector-icon">📅</div>
+          <div class="connector-name">Google Calendar</div>
+          <span class="connector-status not">Not connected</span>
+        </div>
+        <div class="connector-row">
+          <div class="connector-icon">📈</div>
+          <div class="connector-name">FactSet</div>
+          <span class="connector-status connected">Connected</span>
+        </div>
+        <div class="connector-row">
+          <div class="connector-icon">✍️</div>
+          <div class="connector-name">DocuSign</div>
+          <span class="connector-status not">Not connected</span>
+        </div>
+        <div class="connector-row">
+          <div class="connector-icon">🔗</div>
+          <div class="connector-name">Outreach</div>
+          <span class="connector-status not">Not connected</span>
+        </div>
+
+        <button style="width:100%;padding:8px;border:1.5px dashed var(--border2);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--text3);cursor:pointer;background:transparent;margin-top:8px;">
+          ＋ Add Connector
+        </button>
+      </div>
+
+      <!-- Files Tab -->
+      <div id="panel-files" style="display:none;">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:10px;letter-spacing:.06em;">FILES IN CONTEXT</div>
+
+        <div class="file-context-item">
+          <div class="file-context-icon">📊</div>
+          <div class="file-context-info">
+            <div class="file-context-name">Q1_deals.xlsx</div>
+            <div class="file-context-meta">Excel · 2.4 MB · /Documents/Deals</div>
+          </div>
+          <div class="file-context-remove">✕</div>
+        </div>
+        <div class="file-context-item">
+          <div class="file-context-icon">📄</div>
+          <div class="file-context-info">
+            <div class="file-context-name">template_deck.pptx</div>
+            <div class="file-context-meta">PowerPoint · 8.1 MB · /Templates</div>
+          </div>
+          <div class="file-context-remove">✕</div>
+        </div>
+        <div class="file-context-item">
+          <div class="file-context-icon">📋</div>
+          <div class="file-context-info">
+            <div class="file-context-name">buyer_list_EU.csv</div>
+            <div class="file-context-meta">CSV · 156 KB · /Research</div>
+          </div>
+          <div class="file-context-remove">✕</div>
+        </div>
+
+        <button style="width:100%;padding:8px;border:1.5px dashed var(--border2);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--text3);cursor:pointer;background:transparent;margin-top:8px;">
+          ＋ Add from Folder
+        </button>
+
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;letter-spacing:.06em;">CROSS-APP</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.6;">
+            Claude สามารถ read/write ระหว่าง Excel และ PowerPoint ใน session นี้โดยไม่เสีย context
+          </div>
+          <div style="margin-top:8px; display:flex; gap:6px;">
+            <span class="skill-tag">📊 Excel</span>
+            <span class="skill-tag">📄 PowerPoint</span>
+            <span class="skill-tag">📝 Word</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Plugin Marketplace Modal -->
+<div class="marketplace-overlay" id="marketplace">
+  <div class="marketplace-modal">
+    <div class="marketplace-header">
+      <div style="font-size:18px;">⊕</div>
+      <div class="marketplace-title">Plugin Marketplace</div>
+      <div class="marketplace-close" onclick="closeMarketplace()">✕</div>
+    </div>
+    <div class="marketplace-search">
+      <input type="text" placeholder="ค้นหา plugins...">
+    </div>
+    <div class="marketplace-grid">
+      <div class="mkt-card">
+        <div class="mkt-card-top">
+          <div class="mkt-card-icon">📊</div>
+          <div>
+            <div class="mkt-card-name">Financial Analysis</div>
+            <div class="mkt-card-cat">Finance · Anthropic</div>
+          </div>
+        </div>
+        <div class="mkt-card-desc">วิเคราะห์ตัวเลข สร้าง model อัปเดต Excel และสร้าง deck อัตโนมัติ</div>
+        <button class="mkt-card-install" style="background:var(--accent);color:#f0ede8;border-color:var(--accent);">✓ Installed</button>
+      </div>
+      <div class="mkt-card">
+        <div class="mkt-card-top">
+          <div class="mkt-card-icon">🏦</div>
+          <div>
+            <div class="mkt-card-name">Investment Banking</div>
+            <div class="mkt-card-cat">Finance · Anthropic</div>
+          </div>
+        </div>
+        <div class="mkt-card-desc">Transaction review, comparable analysis, pitch materials</div>
+        <button class="mkt-card-install">Install</button>
+      </div>
+      <div class="mkt-card">
+        <div class="mkt-card-top">
+          <div class="mkt-card-icon">📈</div>
+          <div>
+            <div class="mkt-card-name">Equity Research</div>
+            <div class="mkt-card-cat">Finance · Anthropic</div>
+          </div>
+        </div>
+        <div class="mkt-card-desc">วิเคราะห์ earnings transcripts, อัปเดต model, draft research notes</div>
+        <button class="mkt-card-install">Install</button>
+      </div>
+      <div class="mkt-card">
+        <div class="mkt-card-top">
+          <div class="mkt-card-icon">🎯</div>
+          <div>
+            <div class="mkt-card-name">Sales Research</div>
+            <div class="mkt-card-cat">Sales · Anthropic</div>
+          </div>
+        </div>
+        <div class="mkt-card-desc">ค้นหา prospect, draft outreach, อัปเดต CRM อัตโนมัติ</div>
+        <button class="mkt-card-install" style="background:var(--accent);color:#f0ede8;border-color:var(--accent);">✓ Installed</button>
+      </div>
+      <div class="mkt-card">
+        <div class="mkt-card-top">
+          <div class="mkt-card-icon">⚖️</div>
+          <div>
+            <div class="mkt-card-name">Legal Review</div>
+            <div class="mkt-card-cat">Legal · Anthropic</div>
+          </div>
+        </div>
+        <div class="mkt-card-desc">ตรวจสัญญา, redline, สรุปข้อเสี่ยงกฎหมาย</div>
+        <button class="mkt-card-install">Install</button>
+      </div>
+      <div class="mkt-card">
+        <div class="mkt-card-top">
+          <div class="mkt-card-icon">🧬</div>
+          <div>
+            <div class="mkt-card-name">Biology Research</div>
+            <div class="mkt-card-cat">Science · Anthropic</div>
+          </div>
+        </div>
+        <div class="mkt-card-desc">วิเคราะห์ผลการทดลอง, literature review, สรุปงานวิจัย</div>
+        <button class="mkt-card-install">Install</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function handleInput(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+    const val = el.value;
+    const dropdown = document.getElementById('slashDropdown');
+    if (val.startsWith('/')) {
+      dropdown.classList.add('show');
+    } else {
+      dropdown.classList.remove('show');
+    }
+  }
+
+  function switchTab(tab, el) {
+    document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-plugins').style.display = 'none';
+    document.getElementById('panel-connectors').style.display = 'none';
+    document.getElementById('panel-files').style.display = 'none';
+    document.getElementById('panel-' + tab).style.display = 'block';
+  }
+
+  function openMarketplace() {
+    document.getElementById('marketplace').classList.add('show');
+  }
+  function closeMarketplace() {
+    document.getElementById('marketplace').classList.remove('show');
+  }
+  document.getElementById('marketplace').addEventListener('click', function(e) {
+    if (e.target === this) closeMarketplace();
+  });
+
+  // Keyboard nav for slash dropdown
+  document.addEventListener('keydown', function(e) {
+    const dropdown = document.getElementById('slashDropdown');
+    if (!dropdown.classList.contains('show')) return;
+    const items = dropdown.querySelectorAll('.slash-item');
+    const current = dropdown.querySelector('.slash-item.selected');
+    const idx = Array.from(items).indexOf(current);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[idx]?.classList.remove('selected');
+      items[(idx + 1) % items.length]?.classList.add('selected');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[idx]?.classList.remove('selected');
+      items[(idx - 1 + items.length) % items.length]?.classList.add('selected');
+    } else if (e.key === 'Escape') {
+      dropdown.classList.remove('show');
+    }
+  });
+</script>
+</body>
+</html>
