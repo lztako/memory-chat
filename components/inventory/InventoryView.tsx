@@ -1,26 +1,15 @@
 "use client"
 import { useEffect, useState, useMemo } from "react"
-import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LabelList,
-} from "recharts"
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LabelList } from "recharts"
 import type { StockRow } from "@/app/api/inventory/stock/route"
 
 // ─── Constants ────────────────────────────────────────────────
 const TYPES = ["hi-raw", "refined", "refined (ส่งออก)", "white", "ncs", "vhp"] as const
 
-const TYPE_COLOR: Record<string, string> = {
-  "hi-raw":              "#5090d3",
-  "refined":             "#ffab2e",
-  "refined (ส่งออก)":   "#a78bfa",
-  "white":               "#c8c2ba",
-  "ncs":                 "#3dba6e",
-  "vhp":                 "#f08060",
-}
-
 const TYPE_LABEL: Record<string, string> = {
   "hi-raw":              "Hi-Raw",
   "refined":             "Refined",
-  "refined (ส่งออก)":   "Refined (Export)",
+  "refined (ส่งออก)":   "Refined Exp.",
   "white":               "White",
   "ncs":                 "NCS",
   "vhp":                 "VHP",
@@ -39,24 +28,6 @@ function fmtQty(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`
   if (v >= 1_000)     return `${(v / 1_000).toFixed(1)}K`
   return v.toFixed(v % 1 === 0 ? 0 : 2)
-}
-
-// Custom top label for stacked bars — renders total above full stack
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TopLabel(props: any) {
-  const { x, y, width, value } = props as { x: number; y: number; width: number; value: number }
-  if (!value) return null
-  return (
-    <text
-      x={Number(x) + Number(width) / 2}
-      y={Number(y) - 5}
-      textAnchor="middle"
-      fontSize={10}
-      fill="var(--text2)"
-    >
-      {fmtQty(value)}
-    </text>
-  )
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -78,12 +49,10 @@ export function InventoryView() {
     season === "all" ? rows : rows.filter(r => r.tag === season),
   [rows, season])
 
-  // All unique factories (from full dataset, not filtered)
   const factories = useMemo(() =>
     [...new Set(rows.map(r => r.factory))].sort(),
   [rows])
 
-  // Total per type (filtered)
   const typeTotals = useMemo(() => {
     const t: Record<string, number> = {}
     for (const r of filtered) t[r.type] = (t[r.type] ?? 0) + r.qty
@@ -94,24 +63,15 @@ export function InventoryView() {
     Object.values(typeTotals).reduce((s, v) => s + v, 0),
   [typeTotals])
 
-  // Chart data: per factory, each type + running total for top label
+  // Chart: one bar per factory = total qty
   const chartData = useMemo(() =>
-    factories.map(f => {
-      const entry: Record<string, string | number> = { factory: FACTORY_LABEL[f] ?? f }
-      let total = 0
-      for (const t of TYPES) {
-        const v = filtered
-          .filter(r => r.factory === f && r.type === t)
-          .reduce((s, r) => s + r.qty, 0)
-        entry[t] = v
-        total += v
-      }
-      entry._total = total
-      return entry
-    }),
+    factories.map(f => ({
+      factory: FACTORY_LABEL[f] ?? f,
+      total: filtered.filter(r => r.factory === f).reduce((s, r) => s + r.qty, 0),
+    })),
   [filtered, factories])
 
-  // Matrix: factory rows × type cols
+  // Matrix rows
   const matrix = useMemo(() =>
     factories.map(f => ({
       factory: f,
@@ -145,21 +105,16 @@ export function InventoryView() {
           </p>
         </div>
 
-        {/* Season filter */}
         <div style={{ display: "flex", gap: 4 }}>
           {(["all", "68/69", "ปีเก่า"] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setSeason(s)}
-              style={{
-                padding: "5px 12px", borderRadius: 6, border: "1px solid",
-                fontSize: 11, fontWeight: 500, cursor: "pointer",
-                borderColor: season === s ? "var(--accent)" : "var(--border)",
-                background:  season === s ? "var(--accent-dim)" : "transparent",
-                color:       season === s ? "var(--accent)" : "var(--text3)",
-                transition: "all .15s",
-              }}
-            >
+            <button key={s} onClick={() => setSeason(s)} style={{
+              padding: "5px 12px", borderRadius: 6, border: "1px solid",
+              fontSize: 11, fontWeight: 500, cursor: "pointer",
+              borderColor: season === s ? "var(--accent)" : "var(--border)",
+              background:  season === s ? "var(--accent-dim)" : "transparent",
+              color:       season === s ? "var(--accent)" : "var(--text3)",
+              transition: "all .15s",
+            }}>
               {s === "all" ? "All seasons" : s}
             </button>
           ))}
@@ -186,24 +141,20 @@ export function InventoryView() {
           <>
             {/* ── KPI strip ──────────────────────────────────── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
-              <KpiCard label="Total" value={fmtQty(grandTotal)} unit="MT" accent />
+              <KpiCard label="Total" value={fmtQty(grandTotal)} />
               {TYPES.map(t => (
-                <KpiCard key={t} label={TYPE_LABEL[t]} value={fmtQty(typeTotals[t] ?? 0)} unit="MT" />
+                <KpiCard key={t} label={TYPE_LABEL[t]} value={fmtQty(typeTotals[t] ?? 0)} />
               ))}
             </div>
 
-            {/* ── Vertical stacked bar chart ─────────────────── */}
+            {/* ── Bar chart ──────────────────────────────────── */}
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 14 }}>
                 Factory Breakdown
               </div>
 
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 20, right: 8, left: 8, bottom: 0 }}
-                  barCategoryGap="32%"
-                >
+              <ResponsiveContainer width="100%" height={190}>
+                <BarChart data={chartData} margin={{ top: 20, right: 8, left: 8, bottom: 0 }} barCategoryGap="32%">
                   <XAxis
                     dataKey="factory"
                     tick={{ fontSize: 11, fill: "var(--text2)" }}
@@ -211,17 +162,15 @@ export function InventoryView() {
                     tickLine={false}
                   />
                   <YAxis hide />
-                  {TYPES.map((t, i) => (
-                    <Bar key={t} dataKey={t} stackId="a" fill={TYPE_COLOR[t]}
-                      radius={i === TYPES.length - 1 ? [3, 3, 0, 0] : undefined}
-                    >
-                      {/* Only show total label on the topmost bar */}
-                      {i === TYPES.length - 1 && (
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        <LabelList dataKey="_total" content={TopLabel as any} />
-                      )}
-                    </Bar>
-                  ))}
+                  <Bar dataKey="total" fill="var(--accent)" radius={[3, 3, 0, 0]}>
+                    <LabelList
+                      dataKey="total"
+                      position="top"
+                      style={{ fontSize: 10, fill: "var(--text2)", fontVariantNumeric: "tabular-nums" }}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={(v: any) => fmtQty(Number(v))}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -260,16 +209,15 @@ export function InventoryView() {
                           const v = row.byType[t] ?? 0
                           return (
                             <td key={t} style={{ padding: "9px 12px", textAlign: "right", color: v > 0 ? "var(--text2)" : "var(--text3)", fontVariantNumeric: "tabular-nums" }}>
-                              {v > 0 ? fmtQty(v) : "—"}
+                              {fmtQty(v)}
                             </td>
                           )
                         })}
-                        <td style={{ padding: "9px 16px", textAlign: "right", color: "var(--accent)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                          {row.total > 0 ? fmtQty(row.total) : "—"}
+                        <td style={{ padding: "9px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                          {fmtQty(row.total)}
                         </td>
                       </tr>
                     ))}
-                    {/* Totals row */}
                     <tr style={{ background: "var(--surface2)", borderTop: "1px solid var(--border2)" }}>
                       <td style={{ padding: "9px 16px", color: "var(--text3)", fontWeight: 600, fontSize: 10, letterSpacing: ".04em", textTransform: "uppercase" }}>
                         Total
@@ -279,7 +227,7 @@ export function InventoryView() {
                           {fmtQty(typeTotals[t] ?? 0)}
                         </td>
                       ))}
-                      <td style={{ padding: "9px 16px", textAlign: "right", color: "var(--accent)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                      <td style={{ padding: "9px 16px", textAlign: "right", color: "var(--text)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                         {fmtQty(grandTotal)}
                       </td>
                     </tr>
@@ -295,26 +243,21 @@ export function InventoryView() {
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────
-function KpiCard({ label, value, unit, accent }: {
-  label: string; value: string; unit: string; accent?: boolean
-}) {
+function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <div style={{
       padding: "10px 12px",
-      background: accent ? "var(--accent-dim)" : "var(--surface)",
-      border: `1px solid ${accent ? "rgba(255,171,46,.25)" : "var(--border)"}`,
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
       borderRadius: 8,
     }}>
       <div style={{ marginBottom: 5 }}>
-        <span style={{ fontSize: 9, fontWeight: 600, color: accent ? "var(--accent)" : "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase" }}>
+        <span style={{ fontSize: 9, fontWeight: 600, color: "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase" }}>
           {label}
         </span>
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: accent ? "var(--accent)" : "var(--text)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
         {value}
-      </div>
-      <div style={{ fontSize: 9, color: accent ? "var(--accent)" : "var(--text3)", marginTop: 2, opacity: .7 }}>
-        {unit}
       </div>
     </div>
   )
