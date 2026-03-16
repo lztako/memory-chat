@@ -122,7 +122,7 @@ export function InventoryView() {
       </div>
 
       {/* ── Body ─────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
 
         {loading && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text3)", fontSize: 13, paddingTop: 8 }}>
@@ -183,18 +183,23 @@ export function InventoryView() {
                 </span>
               </div>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "14%" }} />
+                    {TYPES.map(t => <col key={t} style={{ width: "13%" }} />)}
+                    <col style={{ width: "13%" }} />
+                  </colgroup>
                   <thead>
                     <tr style={{ background: "var(--surface2)" }}>
-                      <th style={{ padding: "8px 16px", textAlign: "left", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
+                      <th style={{ padding: "8px 16px", textAlign: "left", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         Factory
                       </th>
                       {TYPES.map(t => (
-                        <th key={t} style={{ padding: "8px 12px", textAlign: "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
+                        <th key={t} style={{ padding: "8px 12px", textAlign: "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {TYPE_LABEL[t]}
                         </th>
                       ))}
-                      <th style={{ padding: "8px 16px", textAlign: "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
+                      <th style={{ padding: "8px 16px", textAlign: "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)" }}>
                         Total
                       </th>
                     </tr>
