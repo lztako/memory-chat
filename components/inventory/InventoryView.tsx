@@ -1,13 +1,12 @@
 "use client"
 import { useEffect, useState, useMemo } from "react"
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LabelList,
 } from "recharts"
 import type { StockRow } from "@/app/api/inventory/stock/route"
 
 // ─── Constants ────────────────────────────────────────────────
 const TYPES = ["hi-raw", "refined", "refined (ส่งออก)", "white", "ncs", "vhp"] as const
-type StockType = typeof TYPES[number]
 
 const TYPE_COLOR: Record<string, string> = {
   "hi-raw":              "#5090d3",
@@ -42,6 +41,24 @@ function fmtQty(v: number): string {
   return v.toFixed(v % 1 === 0 ? 0 : 2)
 }
 
+// Custom top label for stacked bars — renders total above full stack
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TopLabel(props: any) {
+  const { x, y, width, value } = props as { x: number; y: number; width: number; value: number }
+  if (!value) return null
+  return (
+    <text
+      x={Number(x) + Number(width) / 2}
+      y={Number(y) - 5}
+      textAnchor="middle"
+      fontSize={10}
+      fill="var(--text2)"
+    >
+      {fmtQty(value)}
+    </text>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────
 export function InventoryView() {
   const [rows, setRows]       = useState<StockRow[]>([])
@@ -61,7 +78,12 @@ export function InventoryView() {
     season === "all" ? rows : rows.filter(r => r.tag === season),
   [rows, season])
 
-  // Total per type
+  // All unique factories (from full dataset, not filtered)
+  const factories = useMemo(() =>
+    [...new Set(rows.map(r => r.factory))].sort(),
+  [rows])
+
+  // Total per type (filtered)
   const typeTotals = useMemo(() => {
     const t: Record<string, number> = {}
     for (const r of filtered) t[r.type] = (t[r.type] ?? 0) + r.qty
@@ -72,19 +94,19 @@ export function InventoryView() {
     Object.values(typeTotals).reduce((s, v) => s + v, 0),
   [typeTotals])
 
-  // Per factory + type for chart
-  const factories = useMemo(() =>
-    [...new Set(rows.map(r => r.factory))].sort(),
-  [rows])
-
+  // Chart data: per factory, each type + running total for top label
   const chartData = useMemo(() =>
     factories.map(f => {
       const entry: Record<string, string | number> = { factory: FACTORY_LABEL[f] ?? f }
+      let total = 0
       for (const t of TYPES) {
-        entry[t] = filtered
+        const v = filtered
           .filter(r => r.factory === f && r.type === t)
           .reduce((s, r) => s + r.qty, 0)
+        entry[t] = v
+        total += v
       }
+      entry._total = total
       return entry
     }),
   [filtered, factories])
@@ -164,80 +186,47 @@ export function InventoryView() {
           <>
             {/* ── KPI strip ──────────────────────────────────── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
-              <KpiCard
-                label="Total"
-                value={fmtQty(grandTotal)}
-                unit="MT"
-                accent
-              />
+              <KpiCard label="Total" value={fmtQty(grandTotal)} unit="MT" accent />
               {TYPES.map(t => (
-                <KpiCard
-                  key={t}
-                  label={TYPE_LABEL[t]}
-                  value={fmtQty(typeTotals[t] ?? 0)}
-                  unit="MT"
-                  dot={TYPE_COLOR[t]}
-                />
+                <KpiCard key={t} label={TYPE_LABEL[t]} value={fmtQty(typeTotals[t] ?? 0)} unit="MT" />
               ))}
             </div>
 
-            {/* ── Stacked bar chart ──────────────────────────── */}
+            {/* ── Vertical stacked bar chart ─────────────────── */}
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 14 }}>
                 Factory Breakdown
               </div>
 
-              {/* Legend */}
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
-                {TYPES.map(t => (
-                  <div key={t} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: TYPE_COLOR[t] }} />
-                    <span style={{ fontSize: 10, color: "var(--text3)" }}>{TYPE_LABEL[t]}</span>
-                  </div>
-                ))}
-              </div>
-
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart
                   data={chartData}
-                  layout="vertical"
-                  margin={{ top: 0, right: 24, left: 8, bottom: 0 }}
-                  barCategoryGap="28%"
+                  margin={{ top: 20, right: 8, left: 8, bottom: 0 }}
+                  barCategoryGap="32%"
                 >
                   <XAxis
-                    type="number"
-                    tick={{ fontSize: 10, fill: "var(--text3)" }}
-                    tickFormatter={v => fmtQty(v as number)}
+                    dataKey="factory"
+                    tick={{ fontSize: 11, fill: "var(--text2)" }}
                     axisLine={{ stroke: "var(--border)" }}
                     tickLine={false}
                   />
-                  <YAxis
-                    type="category"
-                    dataKey="factory"
-                    tick={{ fontSize: 11, fill: "var(--text2)" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={52}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(255,255,255,.04)" }}
-                    contentStyle={{
-                      background: "var(--surface)", border: "1px solid var(--border)",
-                      borderRadius: 8, fontSize: 11, color: "var(--text)",
-                    }}
-                    formatter={(val, name) => [
-                      `${fmtQty(Number(val))} MT`,
-                      TYPE_LABEL[String(name)] ?? String(name),
-                    ]}
-                  />
-                  {TYPES.map(t => (
-                    <Bar key={t} dataKey={t} stackId="a" fill={TYPE_COLOR[t]} radius={t === "vhp" ? [0, 3, 3, 0] : undefined} />
+                  <YAxis hide />
+                  {TYPES.map((t, i) => (
+                    <Bar key={t} dataKey={t} stackId="a" fill={TYPE_COLOR[t]}
+                      radius={i === TYPES.length - 1 ? [3, 3, 0, 0] : undefined}
+                    >
+                      {/* Only show total label on the topmost bar */}
+                      {i === TYPES.length - 1 && (
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        <LabelList dataKey="_total" content={TopLabel as any} />
+                      )}
+                    </Bar>
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* ── Matrix table ───────────────────────────────── */}
+            {/* ── Position Matrix ─────────────────────────────── */}
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase" }}>
@@ -253,10 +242,7 @@ export function InventoryView() {
                       </th>
                       {TYPES.map(t => (
                         <th key={t} style={{ padding: "8px 12px", textAlign: "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
-                            <div style={{ width: 6, height: 6, borderRadius: 1, background: TYPE_COLOR[t], flexShrink: 0 }} />
-                            {TYPE_LABEL[t]}
-                          </div>
+                          {TYPE_LABEL[t]}
                         </th>
                       ))}
                       <th style={{ padding: "8px 16px", textAlign: "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
@@ -279,7 +265,7 @@ export function InventoryView() {
                           )
                         })}
                         <td style={{ padding: "9px 16px", textAlign: "right", color: "var(--accent)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                          {fmtQty(row.total)}
+                          {row.total > 0 ? fmtQty(row.total) : "—"}
                         </td>
                       </tr>
                     ))}
@@ -308,9 +294,9 @@ export function InventoryView() {
   )
 }
 
-// ─── Sub-components ───────────────────────────────────────────
-function KpiCard({ label, value, unit, accent, dot }: {
-  label: string; value: string; unit: string; accent?: boolean; dot?: string
+// ─── KPI Card ─────────────────────────────────────────────────
+function KpiCard({ label, value, unit, accent }: {
+  label: string; value: string; unit: string; accent?: boolean
 }) {
   return (
     <div style={{
@@ -319,8 +305,7 @@ function KpiCard({ label, value, unit, accent, dot }: {
       border: `1px solid ${accent ? "rgba(255,171,46,.25)" : "var(--border)"}`,
       borderRadius: 8,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
-        {dot && <div style={{ width: 6, height: 6, borderRadius: 1, background: dot, flexShrink: 0 }} />}
+      <div style={{ marginBottom: 5 }}>
         <span style={{ fontSize: 9, fontWeight: 600, color: accent ? "var(--accent)" : "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase" }}>
           {label}
         </span>
