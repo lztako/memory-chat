@@ -168,37 +168,40 @@ export function CompanyDrawer({ company, onClose, onCountsLoaded }: CompanyDrawe
               )}
 
               {/* Supplier breakdown */}
-              {detail.supplychain.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <SectionTitle>Supplier Breakdown</SectionTitle>
-                  <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                      <thead>
-                        <tr style={{ background: "var(--surface2)" }}>
-                          {["Supplier", "Trades", "Share"].map(h => (
-                            <th key={h} style={{ padding: "7px 10px", textAlign: h === "Supplier" ? "left" : "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)" }}>
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detail.supplychain.map((s, i) => (
-                          <tr key={s.id} style={{ borderBottom: i < detail.supplychain.length - 1 ? "1px solid var(--border)" : "none" }}>
-                            <td style={{ padding: "6px 10px", color: "var(--text2)" }}>{s.exporter}</td>
-                            <td style={{ padding: "6px 10px", color: "var(--text2)", textAlign: "right" }}>{s.trades_sum}</td>
-                            <td style={{ padding: "6px 10px", textAlign: "right" }}>
-                              <span style={{ color: "var(--accent)", fontWeight: 600 }}>
-                                {s.trade_frequency_ratio.toFixed(0)}%
-                              </span>
-                            </td>
+              {detail.supplychain.length > 0 && (() => {
+                const totalTrades = detail.supplychain.reduce((sum, s) => sum + s.trades_sum, 0)
+                return (
+                  <div style={{ marginBottom: 16 }}>
+                    <SectionTitle>Supplier Breakdown</SectionTitle>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: "var(--surface2)" }}>
+                            {["Supplier", "Trades", "Share"].map(h => (
+                              <th key={h} style={{ padding: "7px 10px", textAlign: h === "Supplier" ? "left" : "right", color: "var(--text3)", fontWeight: 500, borderBottom: "1px solid var(--border)" }}>
+                                {h}
+                              </th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {detail.supplychain.map((s, i) => (
+                            <tr key={s.id} style={{ borderBottom: i < detail.supplychain.length - 1 ? "1px solid var(--border)" : "none" }}>
+                              <td style={{ padding: "6px 10px", color: "var(--text2)" }}>{s.exporter}</td>
+                              <td style={{ padding: "6px 10px", color: "var(--text2)", textAlign: "right" }}>{s.trades_sum}</td>
+                              <td style={{ padding: "6px 10px", textAlign: "right" }}>
+                                <span style={{ color: "var(--accent)", fontWeight: 600 }}>
+                                  {totalTrades > 0 ? (s.trades_sum / totalTrades * 100).toFixed(0) : 0}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Recent shipments */}
               {detail.history.length > 0 && (
