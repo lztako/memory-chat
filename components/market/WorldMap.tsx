@@ -1,131 +1,456 @@
 "use client"
-import { useState } from "react"
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
-
-// ISO 3166-1 numeric → alpha-2 (subset for common trade countries)
-const NUMERIC_TO_ALPHA2: Record<string, string> = {
-  "004":"AF","008":"AL","012":"DZ","024":"AO","032":"AR","036":"AU","040":"AT","050":"BD",
-  "056":"BE","068":"BO","076":"BR","100":"BG","116":"KH","120":"CM","124":"CA","152":"CL",
-  "156":"CN","170":"CO","180":"CD","188":"CR","191":"HR","192":"CU","203":"CZ","208":"DK",
-  "214":"DO","218":"EC","818":"EG","231":"ET","246":"FI","250":"FR","276":"DE","288":"GH",
-  "300":"GR","320":"GT","324":"GN","332":"HT","340":"HN","348":"HU","356":"IN","360":"ID",
-  "364":"IR","368":"IQ","372":"IE","376":"IL","380":"IT","388":"JM","392":"JP","400":"JO",
-  "404":"KE","410":"KR","414":"KW","418":"LA","422":"LB","430":"LR","434":"LY","458":"MY",
-  "484":"MX","504":"MA","508":"MZ","516":"NA","524":"NP","528":"NL","540":"NC","554":"NZ",
-  "566":"NG","578":"NO","586":"PK","591":"PA","604":"PE","608":"PH","616":"PL","620":"PT",
-  "630":"PR","634":"QA","642":"RO","643":"RU","682":"SA","686":"SN","694":"SL","706":"SO",
-  "710":"ZA","724":"ES","144":"LK","729":"SD","752":"SE","756":"CH","764":"TH","788":"TN",
-  "792":"TR","800":"UG","804":"UA","784":"AE","826":"GB","840":"US","858":"UY","862":"VE",
-  "704":"VN","887":"YE","894":"ZM","716":"ZW","104":"MM",
+// ─── Types ────────────────────────────────────────────────────
+export interface MapCountryDatum {
+  code: string   // ISO alpha-2
+  name: string
+  count: number  // number of companies
 }
 
 interface WorldMapProps {
-  countryCounts: Record<string, number>
-  onCountryClick?: (code: string, name: string) => void
+  data: MapCountryDatum[]
   selectedCountry?: string | null
+  onCountryClick?: (code: string) => void
+  onClearSelection?: () => void
 }
 
-export function WorldMap({ countryCounts, onCountryClick, selectedCountry }: WorldMapProps) {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; count: number } | null>(null)
+// ─── GeoJSON types ────────────────────────────────────────────
+type GeoGeometry =
+  | { type: "Polygon"; coordinates: number[][][] }
+  | { type: "MultiPolygon"; coordinates: number[][][][] }
 
-  const maxCount = Math.max(...Object.values(countryCounts), 1)
+type GeoFeature = {
+  type: "Feature"
+  id?: string | number
+  properties?: Record<string, unknown>
+  geometry?: GeoGeometry | null
+}
 
-  function getColor(alpha2: string): string {
-    const count = countryCounts[alpha2] ?? 0
-    if (count === 0) return "var(--surface2)"
-    const intensity = count / maxCount
-    if (selectedCountry === alpha2) return "#ffab2e"
-    // Scale from dim yellow to full ORIGO yellow
-    const r = Math.round(30 + intensity * (255 - 30))
-    const g = Math.round(40 + intensity * (171 - 40))
-    const b = Math.round(60 + intensity * (46 - 60))
-    return `rgb(${r},${g},${b})`
+// ─── Projection (Mercator) ────────────────────────────────────
+const VIEWBOX = { width: 1000, height: 420 }
+const MIN_ZOOM = 1
+const MAX_ZOOM = 6
+const ZOOM_STEP = 0.35
+const LAT_MAX = 80
+const LAT_MIN = -55
+
+const project = (lon: number, lat: number) => {
+  const clamped = Math.max(LAT_MIN, Math.min(LAT_MAX, lat))
+  const x = ((lon + 180) / 360) * VIEWBOX.width
+  const y = ((LAT_MAX - clamped) / (LAT_MAX - LAT_MIN)) * VIEWBOX.height
+  return [x, y] as const
+}
+
+const ringToPath = (ring: number[][]) =>
+  ring.map(([lon, lat], i) => {
+    const [x, y] = project(lon, lat)
+    return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(" ")
+
+const polygonToPath = (coords: number[][][]) =>
+  coords.map(ring => `${ringToPath(ring)} Z`).join(" ")
+
+const geometryToPath = (geometry?: GeoGeometry | null) => {
+  if (!geometry) return ""
+  if (geometry.type === "Polygon") return polygonToPath(geometry.coordinates)
+  return geometry.coordinates.map(p => polygonToPath(p)).join(" ")
+}
+
+const getIso2 = (props?: Record<string, unknown>) => {
+  if (!props) return undefined
+  const v = (props.ISO_A2 ?? props.iso_a2 ?? props.ISO2 ?? props["ISO3166-1-Alpha-2"]) as string | undefined
+  if (!v || v === "-99") return undefined
+  return v.toUpperCase()
+}
+
+const getName = (props?: Record<string, unknown>) =>
+  ((props?.NAME ?? props?.name ?? props?.ADMIN) as string | undefined)
+
+// ─── Centroid helpers ─────────────────────────────────────────
+const ringArea = (ring: number[][]) => {
+  let a = 0
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, y1] = ring[i]
+    const [x2, y2] = ring[(i + 1) % ring.length]
+    a += x1 * y2 - x2 * y1
+  }
+  return Math.abs(a / 2)
+}
+
+const getPrimaryRing = (geometry?: GeoGeometry | null): number[][] => {
+  if (!geometry) return []
+  if (geometry.type === "Polygon") return geometry.coordinates[0] ?? []
+  let best: number[][] = []
+  let bestArea = 0
+  for (const polygon of geometry.coordinates) {
+    const ring = polygon[0] ?? []
+    const area = ringArea(ring)
+    if (area > bestArea) { bestArea = area; best = ring }
+  }
+  return best
+}
+
+const getCentroid = (ring: number[][]): [number, number] | null => {
+  if (!ring.length) return null
+  let twiceArea = 0, cx = 0, cy = 0
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, y1] = ring[i]
+    const [x2, y2] = ring[(i + 1) % ring.length]
+    const cross = x1 * y2 - x2 * y1
+    twiceArea += cross; cx += (x1 + x2) * cross; cy += (y1 + y2) * cross
+  }
+  if (twiceArea === 0) {
+    const s = ring.reduce((a, [lon, lat]) => ({ lon: a.lon + lon, lat: a.lat + lat }), { lon: 0, lat: 0 })
+    return [s.lon / ring.length, s.lat / ring.length]
+  }
+  return [cx / (3 * twiceArea), cy / (3 * twiceArea)]
+}
+
+// ─── Component ────────────────────────────────────────────────
+export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelection }: WorldMapProps) {
+  const [features, setFeatures] = useState<GeoFeature[]>([])
+  const [loadError, setLoadError] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [hoveredCode, setHoveredCode] = useState<string | null>(null)
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const groupRef = useRef<SVGGElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const panRef = useRef({ x: 0, y: 0 })
+  const zoomRef = useRef(1)
+  const activePointer = useRef<number | null>(null)
+  const lastPoint = useRef<{ x: number; y: number } | null>(null)
+  const dragDist = useRef(0)
+  const dragHappened = useRef(false)
+  const frameRef = useRef<number | null>(null)
+  const hoverTimer = useRef<number | null>(null)
+
+  // Load GeoJSON
+  useEffect(() => {
+    fetch("/world-countries.geojson")
+      .then(r => { if (!r.ok) throw new Error("not found"); return r.json() })
+      .then((json: { features: GeoFeature[] }) => setFeatures(json.features ?? []))
+      .catch(() => setLoadError(true))
+  }, [])
+
+  const dataMap = useMemo(() => new Map(data.map(d => [d.code.toUpperCase(), d])), [data])
+
+  // Precompute paths once
+  const renderedFeatures = useMemo(
+    () => features.map((f, idx) => {
+      const path = geometryToPath(f.geometry)
+      if (!path) return null
+      const code = getIso2(f.properties)
+      return { key: `${f.id ?? idx}`, code, path }
+    }).filter(Boolean) as Array<{ key: string; code?: string; path: string }>,
+    [features]
+  )
+
+  // Precompute markers
+  const markers = useMemo(() => {
+    const featureByCode = new Map<string, GeoFeature>()
+    features.forEach(f => {
+      const iso2 = getIso2(f.properties)
+      if (iso2) featureByCode.set(iso2, f)
+    })
+    return data.map(datum => {
+      const f = featureByCode.get(datum.code.toUpperCase())
+      if (!f) return null
+      const ring = getPrimaryRing(f.geometry)
+      const centroid = getCentroid(ring)
+      if (!centroid) return null
+      const [mx, my] = project(centroid[0], centroid[1])
+      return { ...datum, x: mx, y: my, label: datum.count > 99 ? "99+" : String(datum.count) }
+    }).filter(Boolean) as Array<MapCountryDatum & { x: number; y: number; label: string }>
+  }, [data, features])
+
+  // Apply transform imperatively for smooth drag
+  const applyTransform = useCallback((p: { x: number; y: number }, z: number) => {
+    if (!groupRef.current) return
+    const cx = VIEWBOX.width / 2, cy = VIEWBOX.height / 2
+    const tx = p.x + cx - cx * z
+    const ty = p.y + cy - cy * z
+    groupRef.current.setAttribute("transform", `translate(${tx} ${ty}) scale(${z})`)
+  }, [])
+
+  useEffect(() => { applyTransform(pan, zoom) }, [pan, zoom, applyTransform])
+
+  // Scroll to zoom
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current + delta))
+      zoomRef.current = nextZoom
+      setZoom(nextZoom)
+      panRef.current = pan
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [pan])
+
+  // Drag handlers
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (activePointer.current !== null) return
+    if (frameRef.current) { cancelAnimationFrame(frameRef.current); frameRef.current = null }
+    activePointer.current = e.pointerId
+    lastPoint.current = { x: e.clientX, y: e.clientY }
+    dragDist.current = 0
+    dragHappened.current = false
+    setIsDragging(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+    e.preventDefault()
+  }
+
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (activePointer.current !== e.pointerId || !lastPoint.current) return
+    const dx = e.clientX - lastPoint.current.x
+    const dy = e.clientY - lastPoint.current.y
+    lastPoint.current = { x: e.clientX, y: e.clientY }
+    dragDist.current += Math.abs(dx) + Math.abs(dy)
+    if (dragDist.current > 4) dragHappened.current = true
+    panRef.current = { x: panRef.current.x + dx, y: panRef.current.y + dy }
+    if (frameRef.current === null) {
+      frameRef.current = requestAnimationFrame(() => {
+        applyTransform(panRef.current, zoomRef.current)
+        frameRef.current = null
+      })
+    }
+    e.preventDefault()
+  }
+
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (activePointer.current !== e.pointerId) return
+    if (frameRef.current) { cancelAnimationFrame(frameRef.current); frameRef.current = null }
+    applyTransform(panRef.current, zoomRef.current)
+    activePointer.current = null
+    lastPoint.current = null
+    setIsDragging(false)
+    setPan(panRef.current)
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    e.preventDefault()
+    setTimeout(() => { dragHappened.current = false }, 0)
+  }
+
+  const handleCountryClick = (code?: string) => {
+    if (!code || dragHappened.current) return
+    if (selectedCountry === code) { onClearSelection?.(); return }
+    onCountryClick?.(code)
+  }
+
+  const handleMarkerClick = (code: string) => {
+    if (dragHappened.current) return
+    if (selectedCountry === code) { onClearSelection?.(); return }
+    onCountryClick?.(code)
+  }
+
+  const handleHoverEnter = (code: string, e: React.MouseEvent) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      setHoverPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    }
+    hoverTimer.current = window.setTimeout(() => setHoveredCode(code), 100)
+  }
+
+  const handleHoverMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    setHoverPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+  }
+
+  const handleHoverLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    hoverTimer.current = window.setTimeout(() => setHoveredCode(null), 100)
+  }
+
+  const hoveredDatum = hoveredCode ? dataMap.get(hoveredCode.toUpperCase()) : null
+
+  // Hover card position
+  const cardStyle = useMemo(() => {
+    if (!hoverPos || !containerRef.current) return null
+    const rect = containerRef.current.getBoundingClientRect()
+    const W = 200, H = 90
+    let left = hoverPos.x + 14
+    let top = hoverPos.y - H - 10
+    if (left + W > rect.width - 8) left = rect.width - W - 8
+    if (left < 8) left = 8
+    if (top < 8) top = hoverPos.y + 14
+    return { left, top }
+  }, [hoverPos])
+
+  const resetView = () => {
+    setIsAnimating(true)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+    panRef.current = { x: 0, y: 0 }
+    zoomRef.current = 1
+    setTimeout(() => setIsAnimating(false), 350)
+  }
+
+  const cx = VIEWBOX.width / 2, cy = VIEWBOX.height / 2
+  const tx = pan.x + cx - cx * zoom
+  const ty = pan.y + cy - cy * zoom
+  const transform = `translate(${tx} ${ty}) scale(${zoom})`
+  const hasViewChange = Math.abs(zoom - 1) > 0.01 || Math.abs(pan.x) > 1 || Math.abs(pan.y) > 1
+
+  if (loadError) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 260, borderRadius: 12, border: "1px dashed var(--border)", color: "var(--text3)", fontSize: 13 }}>
+        Missing <code style={{ margin: "0 6px", color: "var(--text2)" }}>public/world-countries.geojson</code>
+      </div>
+    )
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", background: "var(--surface)", borderRadius: 8, overflow: "hidden" }}>
-      <ComposableMap
-        projection="geoMercator"
-        projectionConfig={{ scale: 120, center: [10, 20] }}
-        style={{ width: "100%", height: "auto" }}
-        height={280}
-      >
-        <ZoomableGroup zoom={1} minZoom={0.8} maxZoom={4}>
-          <Geographies geography={GEO_URL}>
-            {({ geographies }: { geographies: import("react-simple-maps").Geography[] }) =>
-              geographies.map((geo: import("react-simple-maps").Geography) => {
-                const numericId = geo.id as string
-                const alpha2 = NUMERIC_TO_ALPHA2[numericId] ?? ""
-                const count = alpha2 ? (countryCounts[alpha2] ?? 0) : 0
-                const isSelected = selectedCountry === alpha2
-                return (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={getColor(alpha2)}
-                    stroke="var(--border)"
-                    strokeWidth={0.4}
-                    style={{
-                      default: { outline: "none", cursor: count > 0 || alpha2 ? "pointer" : "default" },
-                      hover: { outline: "none", fill: isSelected ? "#ffab2e" : count > 0 ? "#ffab2e" : "var(--border)" },
-                      pressed: { outline: "none" },
-                    }}
-                    onMouseEnter={(e: React.MouseEvent<SVGPathElement>) => {
-                      if (!alpha2) return
-                      const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect()
-                      if (rect) {
-                        setTooltip({
-                          x: e.clientX - rect.left,
-                          y: e.clientY - rect.top - 10,
-                          name: geo.properties.name as string,
-                          count,
-                        })
-                      }
-                    }}
-                    onMouseLeave={() => setTooltip(null)}
-                    onClick={() => {
-                      if (alpha2 && onCountryClick) onCountryClick(alpha2, geo.properties.name as string)
-                    }}
-                  />
-                )
-              })
-            }
-          </Geographies>
-        </ZoomableGroup>
-      </ComposableMap>
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height: "100%", minHeight: 260, overflow: "hidden", borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)" }}
+    >
+      {/* Zoom controls */}
+      <div style={{ position: "absolute", right: 10, top: 10, zIndex: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+        {([
+          { label: "+", action: () => { const z = Math.min(MAX_ZOOM, zoomRef.current + ZOOM_STEP); zoomRef.current = z; setZoom(z) } },
+          { label: "−", action: () => { const z = Math.max(MIN_ZOOM, zoomRef.current - ZOOM_STEP); zoomRef.current = z; setZoom(z) } },
+        ] as const).map(({ label, action }) => (
+          <button
+            key={label}
+            onClick={action}
+            style={{
+              width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)",
+              background: "var(--surface2)", color: "var(--text)", fontSize: 16, lineHeight: 1,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 400,
+            }}
+          >{label}</button>
+        ))}
+        {hasViewChange && (
+          <button
+            onClick={resetView}
+            title="Reset view"
+            style={{
+              width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)",
+              background: "var(--surface2)", color: "var(--text3)", fontSize: 11,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" />
+            </svg>
+          </button>
+        )}
+      </div>
 
-      {/* Tooltip */}
-      {tooltip && (
+      {/* SVG map */}
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
+        style={{ width: "100%", height: "100%", touchAction: "none", cursor: isDragging ? "grabbing" : "grab", display: "block", userSelect: "none" }}
+        preserveAspectRatio="xMidYMid meet"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        {/* Ocean background */}
+        <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="var(--surface)" />
+
+        <g
+          ref={groupRef}
+          transform={transform}
+          style={{ transition: isAnimating ? "transform 350ms ease" : "none", willChange: "transform" }}
+        >
+          {/* Country shapes */}
+          {renderedFeatures.map(f => {
+            const isSelected = f.code && selectedCountry === f.code
+            const hasData = f.code ? dataMap.has(f.code) : false
+            return (
+              <path
+                key={f.key}
+                d={f.path}
+                fill={isSelected ? "rgba(255,171,46,.18)" : hasData ? "#2a3a55" : "var(--surface2)"}
+                stroke="var(--border)"
+                strokeWidth="0.5"
+                style={{ cursor: f.code ? "pointer" : "default", transition: "fill .15s" }}
+                onClick={() => handleCountryClick(f.code)}
+                onMouseEnter={f.code && !hasData ? e => handleHoverEnter(f.code!, e) : undefined}
+                onMouseMove={f.code && !hasData ? handleHoverMove : undefined}
+                onMouseLeave={f.code && !hasData ? handleHoverLeave : undefined}
+              />
+            )
+          })}
+
+          {/* Country markers */}
+          {markers.map(m => {
+            const isActive = selectedCountry === m.code.toUpperCase()
+            const r = m.label.length > 2 ? 17 : 15
+            return (
+              <g
+                key={`marker-${m.code}`}
+                className={`origo-marker${isActive ? " is-active" : ""}`}
+                onClick={() => handleMarkerClick(m.code.toUpperCase())}
+                onMouseEnter={e => handleHoverEnter(m.code.toUpperCase(), e)}
+                onMouseMove={handleHoverMove}
+                onMouseLeave={handleHoverLeave}
+              >
+                <circle className="origo-marker-hit" cx={m.x} cy={m.y} r={Math.max(24, r + 8)} />
+                <circle className="origo-marker-glow" cx={m.x} cy={m.y} r={r + 3} />
+                <circle className="origo-marker-pill" cx={m.x} cy={m.y} r={r} />
+                <text className="origo-marker-text" x={m.x} y={m.y}>{m.label}</text>
+              </g>
+            )
+          })}
+        </g>
+      </svg>
+
+      {/* Hover tooltip */}
+      {hoveredCode && cardStyle && (
         <div style={{
-          position: "absolute",
-          left: tooltip.x + 8, top: tooltip.y - 8,
+          position: "absolute", left: cardStyle.left, top: cardStyle.top,
+          zIndex: 30, pointerEvents: "none",
           background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: 6, padding: "5px 10px",
-          fontSize: 11, color: "var(--text)", pointerEvents: "none",
-          whiteSpace: "nowrap", zIndex: 10,
-          boxShadow: "0 4px 12px rgba(0,0,0,.4)",
+          borderRadius: 10, padding: "10px 14px",
+          boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+          minWidth: 160,
         }}>
-          <span style={{ fontWeight: 500 }}>{tooltip.name}</span>
-          {tooltip.count > 0 && (
-            <span style={{ color: "var(--accent)", marginLeft: 6 }}>{tooltip.count} records</span>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
+            {hoveredDatum?.name ?? hoveredCode}
+          </div>
+          {hoveredDatum ? (
+            <div style={{ fontSize: 12, color: "var(--accent)" }}>
+              {hoveredDatum.count} {hoveredDatum.count === 1 ? "company" : "companies"}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: "var(--text3)" }}>No data</div>
+          )}
+          {hoveredDatum && (
+            <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>Click to filter</div>
           )}
         </div>
       )}
 
-      {/* Legend */}
-      {Object.keys(countryCounts).length > 0 && (
+      {/* Selected country badge */}
+      {selectedCountry && (
         <div style={{
-          position: "absolute", bottom: 8, right: 10,
-          display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "var(--text3)",
+          position: "absolute", bottom: 10, left: 10, zIndex: 20,
+          display: "flex", alignItems: "center", gap: 6,
+          background: "var(--accent-dim)", border: "1px solid var(--accent)",
+          borderRadius: 20, padding: "4px 10px 4px 8px",
         }}>
-          <span>Low</span>
-          <div style={{
-            width: 60, height: 6, borderRadius: 3,
-            background: "linear-gradient(to right, rgb(30,40,60), #ffab2e)",
-          }} />
-          <span>High</span>
+          <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500 }}>
+            {dataMap.get(selectedCountry.toUpperCase())?.name ?? selectedCountry}
+          </span>
+          <button
+            onClick={() => onClearSelection?.()}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontSize: 12, lineHeight: 1, padding: 0 }}
+          >✕</button>
         </div>
       )}
     </div>
