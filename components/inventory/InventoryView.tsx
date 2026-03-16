@@ -246,17 +246,17 @@ export function InventoryView() {
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <div style={{
-      padding: "10px 12px",
+      padding: "20px 22px 18px",
       background: "var(--surface)",
-      border: "1px solid var(--border)",
-      borderRadius: 8,
+      border: "1.5px solid var(--border)",
+      borderRadius: 10,
+      display: "flex", flexDirection: "column", gap: 6,
+      minHeight: 100,
     }}>
-      <div style={{ marginBottom: 5 }}>
-        <span style={{ fontSize: 9, fontWeight: 600, color: "var(--text3)", letterSpacing: ".06em", textTransform: "uppercase" }}>
-          {label}
-        </span>
+      <div style={{ fontSize: 11, fontFamily: "var(--font-mono), monospace", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text3)" }}>
+        {label}
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+      <div style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", letterSpacing: "-.02em", lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>
         {value}
       </div>
     </div>
