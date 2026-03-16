@@ -71,11 +71,28 @@ export interface CompanySupplychain {
   id: string
   exporter: string
   trades_sum: number
-  trade_frequency_ratio: number
+  trade_frequency_ratio: number  // already 0-100, NOT 0-1
   kg_weight: number
   weight_ratio: number
   total_price_usd: number
   total_price_ratio: number
+}
+
+export interface CompanyContact {
+  id: string
+  contact_name: string
+  position: string | null
+  department: string | null
+  business_email: string | null
+  social_media: string | null
+  region: string | null
+}
+
+export interface CompanyEmail {
+  id: string
+  email: string
+  importance: string | null
+  source_description: string | null
 }
 
 export interface CompanyOverview {
@@ -102,6 +119,8 @@ export interface CompanyDetail {
   history: CompanyHistory[]
   supplychain: CompanySupplychain[]
   overview: CompanyOverview | null
+  contacts: CompanyContact[]
+  emails: CompanyEmail[]
   countryCounts: Record<string, number>
 }
 
@@ -112,7 +131,7 @@ export async function listCompanies(): Promise<MarketCompany[]> {
 }
 
 export async function getCompanyDetail(companyId: string): Promise<CompanyDetail> {
-  const [history, supplychain, overviewArr] = await Promise.all([
+  const [history, supplychain, overviewArr, contacts, emails] = await Promise.all([
     get<CompanyHistory[]>(
       `company_history?company_id=eq.${companyId}&order=date.desc&limit=20&select=id,date,importer,exporter,hs_code,product_description,origin_country,destination_country,total_price_usd,weight_kg,quantity,unit_price_usd_kg,quantity_unit`
     ),
@@ -121,6 +140,12 @@ export async function getCompanyDetail(companyId: string): Promise<CompanyDetail
     ),
     get<CompanyOverview[]>(
       `company_overview?company_id=eq.${companyId}&limit=1&select=total_purchase_value,purchase_value_last_12m,purchase_frequency_per_year,latest_purchase_date,purchase_interval_days,is_active,trade_start_date,trade_end_date,core_products,core_supplier_countries,core_suppliers,recent_trends,purchasing_trend,purchase_stability,purchase_activity,business_overview,procurement_structure`
+    ),
+    get<CompanyContact[]>(
+      `company_contract?company_id=eq.${companyId}&select=id,contact_name,position,department,business_email,social_media,region`
+    ),
+    get<CompanyEmail[]>(
+      `company_email?company_id=eq.${companyId}&select=id,email,importance,source_description`
     ),
   ])
 
@@ -135,6 +160,8 @@ export async function getCompanyDetail(companyId: string): Promise<CompanyDetail
     history,
     supplychain,
     overview: overviewArr[0] ?? null,
+    contacts,
+    emails,
     countryCounts,
   }
 }

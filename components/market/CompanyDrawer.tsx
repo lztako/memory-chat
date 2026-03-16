@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import type { MarketCompany, CompanyDetail } from "@/lib/market/client"
+import type { MarketCompany, CompanyDetail, CompanyContact } from "@/lib/market/client"
 
 interface CompanyDrawerProps {
   company: MarketCompany | null
@@ -131,6 +131,28 @@ export function CompanyDrawer({ company, onClose, onCountsLoaded }: CompanyDrawe
                 </div>
               )}
 
+              {/* Contacts */}
+              {(detail.contacts.length > 0 || detail.emails.length > 0) && (
+                <div style={{ marginBottom: 16 }}>
+                  <SectionTitle>Contacts</SectionTitle>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {detail.contacts.map(c => (
+                      <ContactCard key={c.id} contact={c} />
+                    ))}
+                    {detail.emails.length > 0 && detail.contacts.length === 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {detail.emails.map(e => (
+                          <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "var(--surface2)", borderRadius: 7, border: "1px solid var(--border)" }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            <a href={`mailto:${e.email}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>{e.email}</a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Core suppliers */}
               {detail.overview?.core_suppliers && detail.overview.core_suppliers.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
@@ -167,7 +189,7 @@ export function CompanyDrawer({ company, onClose, onCountsLoaded }: CompanyDrawe
                             <td style={{ padding: "6px 10px", color: "var(--text2)", textAlign: "right" }}>{s.trades_sum}</td>
                             <td style={{ padding: "6px 10px", textAlign: "right" }}>
                               <span style={{ color: "var(--accent)", fontWeight: 600 }}>
-                                {(s.trade_frequency_ratio * 100).toFixed(0)}%
+                                {s.trade_frequency_ratio.toFixed(0)}%
                               </span>
                             </td>
                           </tr>
@@ -237,6 +259,49 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div style={{ padding: "10px 12px", background: "var(--surface2)", borderRadius: 8, border: "1px solid var(--border)" }}>
       <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{value}</div>
       <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
+function ContactCard({ contact }: { contact: CompanyContact }) {
+  return (
+    <div style={{ padding: "10px 12px", background: "var(--surface2)", borderRadius: 8, border: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", lineHeight: 1.3 }}>
+            {contact.contact_name}
+          </div>
+          {contact.position && (
+            <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>{contact.position}</div>
+          )}
+          {contact.region && (
+            <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 1 }}>{contact.region}</div>
+          )}
+        </div>
+        {contact.social_media && (
+          <a
+            href={contact.social_media}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ flexShrink: 0, color: "var(--text3)", display: "flex", alignItems: "center" }}
+            title="LinkedIn"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+              <rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+            </svg>
+          </a>
+        )}
+      </div>
+      {contact.business_email && (
+        <a
+          href={`mailto:${contact.business_email}`}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 11, color: "var(--accent)", textDecoration: "none" }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          {contact.business_email}
+        </a>
+      )}
     </div>
   )
 }
