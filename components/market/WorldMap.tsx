@@ -169,14 +169,25 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
     }).filter(Boolean) as Array<MapCountryDatum & { x: number; y: number; label: string }>
   }, [data, features])
 
+  // Clamp pan so map never scrolls outside its own bounds
+  const clampPan = useCallback((p: { x: number; y: number }, z: number) => {
+    const maxX = (z - 1) * VIEWBOX.width / 2
+    const maxY = (z - 1) * VIEWBOX.height / 2
+    return {
+      x: Math.max(-maxX, Math.min(maxX, p.x)),
+      y: Math.max(-maxY, Math.min(maxY, p.y)),
+    }
+  }, [])
+
   // Apply transform imperatively for smooth drag
   const applyTransform = useCallback((p: { x: number; y: number }, z: number) => {
     if (!groupRef.current) return
+    const clamped = clampPan(p, z)
     const cx = VIEWBOX.width / 2, cy = VIEWBOX.height / 2
-    const tx = p.x + cx - cx * z
-    const ty = p.y + cy - cy * z
+    const tx = clamped.x + cx - cx * z
+    const ty = clamped.y + cy - cy * z
     groupRef.current.setAttribute("transform", `translate(${tx} ${ty}) scale(${z})`)
-  }, [])
+  }, [clampPan])
 
   useEffect(() => { applyTransform(pan, zoom) }, [pan, zoom, applyTransform])
 
@@ -234,11 +245,13 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     if (activePointer.current !== e.pointerId) return
     if (frameRef.current) { cancelAnimationFrame(frameRef.current); frameRef.current = null }
-    applyTransform(panRef.current, zoomRef.current)
+    const clamped = clampPan(panRef.current, zoomRef.current)
+    panRef.current = clamped
+    applyTransform(clamped, zoomRef.current)
     activePointer.current = null
     lastPoint.current = null
     setIsDragging(false)
-    setPan(panRef.current)
+    setPan(clamped)
     e.currentTarget.releasePointerCapture(e.pointerId)
     e.preventDefault()
     setTimeout(() => { dragHappened.current = false }, 0)
@@ -301,10 +314,11 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
   }
 
   const cx = VIEWBOX.width / 2, cy = VIEWBOX.height / 2
-  const tx = pan.x + cx - cx * zoom
-  const ty = pan.y + cy - cy * zoom
+  const clampedPan = clampPan(pan, zoom)
+  const tx = clampedPan.x + cx - cx * zoom
+  const ty = clampedPan.y + cy - cy * zoom
   const transform = `translate(${tx} ${ty}) scale(${zoom})`
-  const hasViewChange = Math.abs(zoom - 1) > 0.01 || Math.abs(pan.x) > 1 || Math.abs(pan.y) > 1
+  const hasViewChange = Math.abs(zoom - 1) > 0.01 || Math.abs(clampedPan.x) > 1 || Math.abs(clampedPan.y) > 1
 
   if (loadError) {
     return (
@@ -380,8 +394,8 @@ export function WorldMap({ data, selectedCountry, onCountryClick, onClearSelecti
               <path
                 key={f.key}
                 d={f.path}
-                fill={isSelected ? "rgba(255,171,46,.35)" : hasData ? "rgba(255,171,46,.18)" : "var(--surface2)"}
-                stroke={hasData ? "rgba(255,171,46,.3)" : "var(--border)"}
+                fill={isSelected ? "rgba(255,171,46,.22)" : "var(--surface2)"}
+                stroke="var(--border)"
                 strokeWidth="0.5"
                 style={{ cursor: f.code ? "pointer" : "default", transition: "fill .15s" }}
                 onClick={() => handleCountryClick(f.code)}
