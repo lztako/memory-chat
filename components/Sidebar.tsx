@@ -56,6 +56,22 @@ const NAV_ITEMS = [
     href: "/chat/dashboard", label: "Dashboard",
     icon: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
   },
+  {
+    href: "/chat/shipments", label: "Shipments",
+    icon: <><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5" /><rect x="9" y="11" width="14" height="10" rx="1" /><circle cx="12" cy="21" r="1" /><circle cx="19" cy="21" r="1" /></>,
+  },
+  {
+    href: "/chat/invoices", label: "Invoices",
+    icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></>,
+  },
+  {
+    href: "/chat/inventory", label: "Inventory",
+    icon: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></>,
+  },
+  {
+    href: "/chat/market", label: "Market",
+    icon: <><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>,
+  },
 ]
 
 export function Sidebar({ conversations, userInitial, userEmail, signOut, deleteConversation }: SidebarProps) {
@@ -160,7 +176,7 @@ export function Sidebar({ conversations, userInitial, userEmail, signOut, delete
           fontSize: 18, fontWeight: 700,
           color: "var(--text)",
           letterSpacing: "-.02em",
-          fontFamily: "var(--font-ibm-plex-sans), sans-serif",
+          fontFamily: "var(--font-sans), sans-serif",
         }}>
           Origo
         </span>
@@ -238,7 +254,7 @@ export function Sidebar({ conversations, userInitial, userEmail, signOut, delete
           {/* User info */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
-            <div style={{ fontSize: 9, color: "var(--text3)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>import/export AI</div>
+            <div style={{ fontSize: 9, color: "var(--text3)", fontFamily: "var(--font-mono), monospace" }}>import/export AI</div>
           </div>
 
           {/* Settings */}

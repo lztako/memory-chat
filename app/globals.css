@@ -6,34 +6,35 @@
 .recharts-wrapper svg,
 .recharts-wrapper svg:focus { outline: none !important; }
 
-/* ─── Design Tokens — Dark Theme ─────────────────────────────── */
+/* ─── Design Tokens — Origo Dark ─────────────────────────────── */
 :root {
-  --bg:       #1a1918;
-  --surface:  #222120;
-  --surface2: #2e2c2a;
-  --border:   #333130;
-  --border2:  #404040;
-  --text:     #e8e4de;
-  --text2:    #9a9490;
-  --text3:    #6b6560;
-  --accent:   #e8e4de;
-  --red:      #d94f3d;
-  --blue:     #5a8fba;
-  --green:    #4a9a6a;
-  --orange:   #e8826a;
+  --bg:       #0d1117;
+  --surface:  #161c27;
+  --surface2: #1e2636;
+  --border:   #263040;
+  --border2:  #32405a;
+  --text:     #e6e2d8;
+  --text2:    #8c97aa;
+  --text3:    #566070;
+  --accent:   #ffab2e;
+  --accent-dim: rgba(255, 171, 46, 0.12);
+  --red:      #f05050;
+  --blue:     #5090d3;
+  --green:    #3dba6e;
+  --orange:   #f08060;
 }
 
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--text);
-  --font-sans: var(--font-ibm-plex-sans);
-  --font-mono: var(--font-ibm-plex-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-ibm-plex-sans), Arial, sans-serif;
+  font-family: var(--font-sans), sans-serif;
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────── */
@@ -52,7 +53,7 @@ body {
   padding: 7px 10px;
   border: none;
   border-radius: 7px;
-  font-family: var(--font-ibm-plex-sans), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 13px;
   font-weight: 400;
   color: var(--text2);
@@ -77,6 +78,31 @@ body {
   transition: border-color .15s, color .15s;
 }
 .folder-box-sidebar:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─── World Map Markers ──────────────────────────────────────── */
+.origo-marker { cursor: pointer; }
+.origo-marker-hit { fill: transparent; pointer-events: all; }
+.origo-marker-glow { fill: rgba(255,171,46,.15); stroke: #ffab2e; stroke-width: 1.2; }
+.origo-marker-pill {
+  fill: #ffab2e; stroke: rgba(255,171,46,.6); stroke-width: 1.5;
+  transition: transform .12s, filter .12s;
+  transform-box: fill-box; transform-origin: center;
+}
+.origo-marker-text {
+  fill: #0d1117; font-size: 12px; font-weight: 700;
+  text-anchor: middle; dominant-baseline: central;
+  pointer-events: none; font-family: var(--font-sans), sans-serif;
+}
+.origo-marker.is-active .origo-marker-pill { stroke: #fff; stroke-width: 2.5; fill: #ffab2e; filter: brightness(1.1); }
+.origo-marker.is-active .origo-marker-text { fill: #0d1117; }
+.origo-marker:hover .origo-marker-pill { filter: brightness(1.12); transform: scale(1.1); }
+
+/* ─── Accent highlights ──────────────────────────────────────── */
+.accent-active {
+  background: var(--accent-dim);
+  color: var(--accent) !important;
+  border-radius: 5px;
+}
 
 .nav-item-sidebar {
   display: flex;
@@ -142,7 +168,7 @@ body {
   border-radius: 3px;
   padding: 0.1em 0.35em;
   font-size: 0.85em;
-  font-family: var(--font-ibm-plex-mono), monospace;
+  font-family: var(--font-mono), monospace;
 }
 .markdown-content pre {
   background: var(--surface2);
@@ -200,7 +226,7 @@ body {
 .thinking-text {
   display: inline-block;
   font-size: 13px;
-  font-family: var(--font-ibm-plex-sans), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   padding: 4px 2px;
   background: linear-gradient(
     90deg,
